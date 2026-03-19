@@ -248,6 +248,20 @@ class TestFirstLast(TestCase):
         )
         check()
 
+    def test_first_last_explicit_order_by_no_args(self):
+        """
+        Calling order_by() without arguments disables implicit pk ordering
+        in first()/last().
+        """
+        p1 = Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        p2 = Person.objects.create(name="Alice", birthday=datetime(1961, 2, 3))
+        qs = Person.objects.order_by()
+        # first()/last() return a result without adding pk ordering.
+        self.assertIn(qs.first(), [p1, p2])
+        self.assertIn(qs.last(), [p1, p2])
+        # The query should not contain ORDER BY.
+        self.assertNotIn("ORDER BY", str(qs.all().query))
+
     def test_first_last_unordered_qs_aggregation_error(self):
         a1 = Article.objects.create(
             headline="Article 1",
