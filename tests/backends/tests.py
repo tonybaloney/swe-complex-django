@@ -621,6 +621,29 @@ class BackendTestCase(TransactionTestCase):
         with self.settings(TIME_ZONE=None, USE_TZ=False):
             connection.init_connection_state()
 
+    def test_cursor_close_error_does_not_mask_execute_error(self):
+        """
+        DatabaseError raised during cursor.close() doesn't mask the original
+        execute() exception (#29257).
+        """
+        from unittest.mock import MagicMock, patch
+
+        from django.db.models.sql.constants import SINGLE
+
+        execute_error = DatabaseError("execute error")
+        mock_cursor = MagicMock()
+        mock_cursor.execute.side_effect = execute_error
+        mock_cursor.close.side_effect = DatabaseError("close error")
+
+        compiler = Article.objects.all().query.get_compiler(using=DEFAULT_DB_ALIAS)
+
+        with patch.object(
+            type(compiler.connection), "cursor", return_value=mock_cursor
+        ):
+            with self.assertRaises(DatabaseError) as cm:
+                compiler.execute_sql(SINGLE)
+            self.assertEqual(str(cm.exception), "execute error")
+
 
 # These tests aren't conditional because it would require differentiating
 # between MySQL+InnoDB and MySQL+MYISAM (something we currently can't do).
