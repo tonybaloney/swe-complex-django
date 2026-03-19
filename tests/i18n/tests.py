@@ -995,6 +995,18 @@ class FormattingTests(SimpleTestCase):
                 ),
             )
 
+        # Basque locale
+        with translation.override("eu", deactivate=True):
+            self.assertEqual("2009(e)ko abe.k 31", date_format(self.d))
+            self.assertEqual(
+                "2009(e)ko abe.k 31, 20:50",
+                date_format(self.dt, "DATETIME_FORMAT"),
+            )
+            self.assertEqual(
+                "2009(e)ko abendua", date_format(self.d, "YEAR_MONTH_FORMAT")
+            )
+            self.assertEqual("abenduaren 31a", date_format(self.d, "MONTH_DAY_FORMAT"))
+
         # English locale
         with translation.override("en", deactivate=True):
             self.assertEqual("N j, Y", get_format("DATE_FORMAT"))
