@@ -131,6 +131,9 @@ Minor features
 :mod:`django.contrib.postgres`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+* :class:`~django.contrib.postgres.constraints.ExclusionConstraint` now supports
+  ``Hash`` index type.
+
 * :djadmin:`inspectdb` now introspects
   :class:`~django.contrib.postgres.fields.HStoreField` when ``psycopg`` 3.2+ is
   installed and ``django.contrib.postgres`` is in :setting:`INSTALLED_APPS`.
