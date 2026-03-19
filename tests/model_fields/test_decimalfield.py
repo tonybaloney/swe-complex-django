@@ -5,6 +5,7 @@ from unittest import mock
 from django.core import validators
 from django.core.exceptions import ValidationError
 from django.db import connection, models
+from django.db.models import Value
 from django.test import TestCase
 
 from .models import BigD, Foo
@@ -140,3 +141,13 @@ class DecimalFieldTests(TestCase):
         obj = Foo.objects.create(a="bar", d=Decimal("8.320"))
         obj.refresh_from_db()
         self.assertEqual(obj.d.compare_total(Decimal("8.320")), Decimal("0"))
+
+    def test_sqlite_integer_precision_bypass(self):
+        obj = Foo.objects.create(a="bar", d=Decimal("1"))
+        self.assertEqual(
+            Foo.objects.filter(pk=obj.pk)
+            .annotate(d_int=Value(9999999999999999, output_field=models.DecimalField()))
+            .get()
+            .d_int,
+            Decimal("9999999999999999"),
+        )
