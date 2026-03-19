@@ -2,10 +2,11 @@ import operator
 import unittest
 from collections import namedtuple
 from contextlib import contextmanager
+from unittest import mock
 
 from django.db import connection, models
-from django.db.utils import ProgrammingError
-from django.test import TestCase
+from django.db.utils import DatabaseError, ProgrammingError
+from django.test import SimpleTestCase, TestCase
 from django.test.utils import garbage_collect
 from django.utils.version import PYPY
 
@@ -18,6 +19,27 @@ except ImportError:
 
 
 @unittest.skipUnless(connection.vendor == "postgresql", "PostgreSQL tests")
+class ServerSideCursorErrorHandlingTests(SimpleTestCase):
+    def test_execute_sql_closes_chunked_cursor_without_masking_error(self):
+        """
+        The original execute() exception is preserved when cursor.close() fails.
+        """
+        query = mock.Mock()
+        compiler = connection.ops.compiler("SQLCompiler")(query, connection, None)
+        cursor = mock.Mock()
+        cursor.execute.side_effect = DatabaseError("original")
+        cursor.close.side_effect = DatabaseError("cursor does not exist")
+
+        with (
+            mock.patch.object(type(compiler), "as_sql", return_value=("SELECT 1", ())),
+            mock.patch.object(connection, "chunked_cursor", return_value=cursor),
+        ):
+            with self.assertRaisesMessage(DatabaseError, "original"):
+                compiler.execute_sql(chunked_fetch=True)
+
+        cursor.close.assert_called_once_with()
+
+
 class ServerSideCursorsPostgres(TestCase):
     cursor_fields = (
         "name, statement, is_holdable, is_binary, is_scrollable, creation_time"
