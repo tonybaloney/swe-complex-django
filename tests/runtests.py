@@ -187,7 +187,7 @@ def get_filtered_test_modules(start_at, start_after, gis_enabled, test_labels=No
             yield test_module
 
 
-def setup_collect_tests(start_at, start_after, test_labels=None):
+def setup_collect_tests(start_at, start_after, test_labels=None, run_makemigrations=False):
     TMPDIR = os.environ["TMPDIR"]
     state = {
         "INSTALLED_APPS": settings.INSTALLED_APPS,
@@ -228,6 +228,18 @@ def setup_collect_tests(start_at, start_after, test_labels=None):
         "contenttypes": None,
         "sessions": None,
     }
+    if run_makemigrations:
+        settings.MIGRATION_MODULES.update(
+            {
+                test_module: None
+                for test_module in get_filtered_test_modules(
+                    start_at,
+                    start_after,
+                    False,
+                    test_labels=test_labels,
+                )
+            }
+        )
     log_config = copy.deepcopy(DEFAULT_LOGGING)
     # Filter out non-error logging so we don't have to capture it in lots of
     # tests.
@@ -411,8 +423,10 @@ def django_tests(
     return failures
 
 
-def collect_test_modules(start_at, start_after):
-    test_modules, state = setup_collect_tests(start_at, start_after)
+def collect_test_modules(start_at, start_after, run_makemigrations=False):
+    test_modules, state = setup_collect_tests(
+        start_at, start_after, run_makemigrations=run_makemigrations
+    )
     teardown_collect_tests(state)
     return test_modules
 
@@ -439,7 +453,9 @@ def get_subprocess_args(options):
 
 def bisect_tests(bisection_label, options, test_labels, start_at, start_after):
     if not test_labels:
-        test_labels = collect_test_modules(start_at, start_after)
+        test_labels = collect_test_modules(
+            start_at, start_after, run_makemigrations=options.makemigrations
+        )
 
     print("***** Bisecting test suite: %s" % " ".join(test_labels))
 
@@ -488,7 +504,9 @@ def bisect_tests(bisection_label, options, test_labels, start_at, start_after):
 
 def paired_tests(paired_test, options, test_labels, start_at, start_after):
     if not test_labels:
-        test_labels = collect_test_modules(start_at, start_after)
+        test_labels = collect_test_modules(
+            start_at, start_after, run_makemigrations=options.makemigrations
+        )
 
     print("***** Trying paired execution")
 
@@ -688,6 +706,11 @@ if __name__ == "__main__":
         default=None,
         metavar="N",
         help="Show the N slowest test cases (N=0 for all).",
+    )
+    parser.add_argument(
+        "--makemigrations",
+        action="store_true",
+        help="Check test models for missing migrations.",
     )
 
     options = parser.parse_args()
