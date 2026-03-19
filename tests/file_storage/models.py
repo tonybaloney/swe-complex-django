@@ -43,6 +43,15 @@ class LazyTempStorage(LazyObject):
         self._wrapped = temp_storage
 
 
+def auto_now_add_upload_to(instance, filename):
+    return "%s/%s" % (instance.created.strftime("%Y%m%d%H%M%S"), filename)
+
+
+class AutoNowAddStorage(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    document = models.FileField(storage=temp_storage, upload_to=auto_now_add_upload_to)
+
+
 class Storage(models.Model):
     def custom_upload_to(self, filename):
         return "foo"

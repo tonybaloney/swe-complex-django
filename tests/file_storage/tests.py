@@ -32,6 +32,7 @@ from django.utils._os import symlinks_supported
 from django.utils.functional import empty
 
 from .models import (
+    AutoNowAddStorage,
     Storage,
     callable_default_storage,
     callable_storage,
@@ -957,6 +958,17 @@ class FileFieldStorageTests(TestCase):
         # CustomValidNameStorage.get_valid_name() appends '_valid' to the name
         self.assertTrue(obj.custom_valid_name.name.endswith("/random_file_valid"))
         obj.custom_valid_name.close()
+
+    def test_auto_now_add_in_upload_to(self):
+        """
+        auto_now_add fields should be set before FileField.upload_to is
+        called (#36847).
+        """
+        obj = AutoNowAddStorage.objects.create(
+            document=SimpleUploadedFile("test.txt", b"test content"),
+        )
+        self.assertIn(obj.created.strftime("%Y%m%d%H%M%S"), obj.document.name)
+        obj.document.close()
 
     def test_filefield_pickling(self):
         # Push an object into the cache to make sure it pickles properly
