@@ -15,6 +15,7 @@ from functools import wraps
 from pathlib import Path
 from unittest import mock, skipIf
 
+import django
 from django.conf import settings
 from django.core import management, signals
 from django.core.cache import (
@@ -1985,6 +1986,30 @@ class RedisCacheTests(BaseCacheTests, TestCase):
         self.assertEqual(pool.connection_kwargs["db"], 5)
         self.assertEqual(pool.connection_kwargs["socket_timeout"], 0.1)
         self.assertIs(pool.connection_kwargs["retry_on_timeout"], True)
+
+    def test_redis_driver_info(self):
+        import redis
+
+        pool = cache._cache._get_connection_pool(write=False)
+        driver_info = pool.connection_kwargs["driver_info"]
+        self.assertIsInstance(driver_info, redis.driver_info.DriverInfo)
+        self.assertEqual(
+            driver_info.formatted_name,
+            "redis-py(django_v%s)" % django.__version__,
+        )
+
+    @override_settings(
+        CACHES=caches_setting_for_tests(
+            base=RedisCache_params,
+            exclude=redis_excluded_caches,
+            OPTIONS={
+                "driver_info": None,
+            },
+        )
+    )
+    def test_redis_driver_info_custom(self):
+        pool = cache._cache._get_connection_pool(write=False)
+        self.assertIsNone(pool.connection_kwargs.get("driver_info"))
 
 
 class FileBasedCachePathLibTests(FileBasedCacheTests):

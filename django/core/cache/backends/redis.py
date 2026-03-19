@@ -59,6 +59,12 @@ class RedisCacheClient:
             parser_class = import_string(parser_class)
         parser_class = parser_class or self._lib.connection.DefaultParser
 
+        import django
+
+        driver_info = redis.driver_info.DriverInfo()
+        driver_info.add_upstream_driver("django", django.__version__)
+        options.setdefault("driver_info", driver_info)
+
         self._pool_options = {"parser_class": parser_class, **options}
 
     def _get_connection_pool_index(self, write):
