@@ -86,6 +86,7 @@ class HumanizeTests(SimpleTestCase):
     def test_i18n_html_ordinal(self):
         """Allow html in output on i18n strings"""
         test_list = (
+            "0",
             "1",
             "2",
             "3",
@@ -93,6 +94,7 @@ class HumanizeTests(SimpleTestCase):
             "11",
             "12",
             "13",
+            "81",
             "101",
             "102",
             "103",
@@ -101,6 +103,7 @@ class HumanizeTests(SimpleTestCase):
             None,
         )
         result_list = (
+            "0<sup>e</sup>",
             "1<sup>er</sup>",
             "2<sup>e</sup>",
             "3<sup>e</sup>",
@@ -108,7 +111,8 @@ class HumanizeTests(SimpleTestCase):
             "11<sup>e</sup>",
             "12<sup>e</sup>",
             "13<sup>e</sup>",
-            "101<sup>er</sup>",
+            "81<sup>er</sup>",
+            "101<sup>e</sup>",
             "102<sup>e</sup>",
             "103<sup>e</sup>",
             "111<sup>e</sup>",
