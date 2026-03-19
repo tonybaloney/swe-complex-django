@@ -266,6 +266,15 @@ class Document(models.Model):
     myfile = models.FileField(storage=temp_storage, upload_to="unused", unique=True)
 
 
+def upload_to_date_folder(instance, filename):
+    return f"{instance.created_at.date()}/{filename}"
+
+
+class DocumentWithAutoNowAdd(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    myfile = models.FileField(storage=temp_storage, upload_to=upload_to_date_folder)
+
+
 ###############################################################################
 # ImageField
 
