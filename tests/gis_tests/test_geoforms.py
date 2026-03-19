@@ -544,3 +544,9 @@ class GeometryWidgetTests(SimpleTestCase):
         form = PointForm(data={"p": point.json})
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data["p"].srid, 4326)
+
+    def test_deserialize_invalid_geojson(self):
+        widget = BaseGeometryWidget()
+        self.assertIsNone(
+            widget.deserialize('{"type": "Point", "coordinates": []}')
+        )
