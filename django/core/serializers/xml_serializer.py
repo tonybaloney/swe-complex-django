@@ -10,7 +10,7 @@ from xml.sax.expatreader import ExpatParser as _ExpatParser
 
 from django.apps import apps
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, SuspiciousOperation
 from django.core.serializers import base
 from django.db import DEFAULT_DB_ALIAS, models
 from django.utils.xmlutils import SimplerXMLGenerator, UnserializableContentError
@@ -315,6 +315,7 @@ class Deserializer(base.Deserializer):
                 if field_node.getElementsByTagName("None"):
                     value = None
                 else:
+                    validate_single_tags(field_node)
                     value = field.to_python(getInnerText(field_node).strip())
                     # Load value since JSONField.to_python() outputs strings.
                     if field.get_internal_type() == "JSONField":
@@ -331,6 +332,7 @@ class Deserializer(base.Deserializer):
         Handle a <field> node for a ForeignKey
         """
         # Check if there is a child node named 'None', returning None if so.
+        validate_single_tags(node, "None", "natural")
         natural_keys = node.getElementsByTagName("natural")
         if node.getElementsByTagName("None") and not natural_keys:
             return None
@@ -377,6 +379,7 @@ class Deserializer(base.Deserializer):
         """
         Handle a <field> node for a ManyToManyField.
         """
+        validate_m2m_tags(node)
         model = field.remote_field.model
         default_manager = model._default_manager
         if hasattr(default_manager, "get_by_natural_key"):
@@ -440,7 +443,7 @@ class Deserializer(base.Deserializer):
 
 
 def getInnerText(node):
-    """Get the inner text of a DOM node and any children one level deep."""
+    """Get the inner text of a DOM node."""
     # inspired by
     # https://mail.python.org/pipermail/xml-sig/2005-March/011022.html
     return "".join(
@@ -451,6 +454,19 @@ def getInnerText(node):
             if element.nodeType in (element.TEXT_NODE, element.CDATA_SECTION_NODE)
         ]
     )
+
+
+def validate_single_tags(node, *valid_tags):
+    for child in node.childNodes:
+        if child.nodeType == child.ELEMENT_NODE and child.nodeName not in valid_tags:
+            raise SuspiciousOperation("Unexpected element: %r" % child.nodeName)
+
+
+def validate_m2m_tags(node):
+    validate_single_tags(node, "object")
+    for child in node.childNodes:
+        if child.nodeType == child.ELEMENT_NODE:
+            validate_single_tags(child, "natural")
 
 
 # Below code based on Christian Heimes' defusedxml

@@ -11,6 +11,7 @@ from django.apps import apps
 from django.contrib.sites.models import Site
 from django.core import management
 from django.core.files.temp import NamedTemporaryFile
+from django.core.exceptions import SuspiciousOperation
 from django.core.management import CommandError
 from django.core.management.commands.dumpdata import ProxyModelWarning
 from django.core.serializers.base import ProgressBar
@@ -522,12 +523,12 @@ class FixtureLoadingTests(DumpDataAssertMixin, TestCase):
         )
 
     def test_deeply_nested_elements(self):
-        """Text inside deeply-nested tags is skipped."""
-        management.call_command(
-            "loaddata", "invalid_deeply_nested_elements.xml", verbosity=0
-        )
-        person = Person.objects.get(pk=1)
-        self.assertEqual(person.name, "Django")  # not "Django pony"
+        """Unexpected nested tags in XML fixtures raise SuspiciousOperation."""
+        msg = "Unexpected element: 'natural'"
+        with self.assertRaisesMessage(SuspiciousOperation, msg):
+            management.call_command(
+                "loaddata", "invalid_deeply_nested_elements.xml", verbosity=0
+            )
 
     def test_dumpdata_with_excludes(self):
         # Load fixture1 which has a site, two articles, and a category
