@@ -78,15 +78,17 @@ get_cs = CsOutput("GEOSGeom_getCoordSeq", argtypes=[GEOM_PTR])
 cs_getordinate = CsOperation("GEOSCoordSeq_getOrdinate", ordinate=True, get=True)
 cs_setordinate = CsOperation("GEOSCoordSeq_setOrdinate", ordinate=True)
 
-# For getting, x, y, z
+# For getting, x, y, z, m
 cs_getx = CsOperation("GEOSCoordSeq_getX", get=True)
 cs_gety = CsOperation("GEOSCoordSeq_getY", get=True)
 cs_getz = CsOperation("GEOSCoordSeq_getZ", get=True)
+cs_getm = CsOperation("GEOSCoordSeq_getM", get=True)
 
-# For setting, x, y, z
+# For setting, x, y, z, m
 cs_setx = CsOperation("GEOSCoordSeq_setX")
 cs_sety = CsOperation("GEOSCoordSeq_setY")
 cs_setz = CsOperation("GEOSCoordSeq_setZ")
+cs_setm = CsOperation("GEOSCoordSeq_setM")
 
 # These routines return size & dimensions.
 cs_getsize = CsInt("GEOSCoordSeq_getSize")

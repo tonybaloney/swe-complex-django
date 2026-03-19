@@ -113,10 +113,11 @@ class LineString(LinearGeometryMixin, GEOSGeometry):
     def _set_list(self, length, items):
         ndim = self._cs.dims
         hasz = self._cs.hasz  # I don't understand why these are different
+        hasm = self._cs.hasm
         srid = self.srid
 
         # create a new coordinate sequence and populate accordingly
-        cs = GEOSCoordSeq(capi.create_cs(length, ndim), z=hasz)
+        cs = GEOSCoordSeq(capi.create_cs(length, ndim), z=hasz, m=hasm)
         for i, c in enumerate(items):
             cs[i] = c
 
