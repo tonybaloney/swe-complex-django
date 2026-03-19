@@ -1,3 +1,5 @@
+import warnings
+
 from django.apps import apps as global_apps
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, migrations, router, transaction
 
@@ -31,6 +33,14 @@ class RenameContentType(migrations.RunPython):
                 # conflict as remove_stale_contenttypes will take care of
                 # asking the user what should be done next.
                 content_type.model = old_model
+                warnings.warn(
+                    f"Couldn't rename content type for '{self.app_label}.{old_model}' "
+                    f"to '{self.app_label}.{new_model}': a content type with "
+                    f"model '{new_model}' already exists. Run the "
+                    f"'remove_stale_contenttypes' management command to fix "
+                    f"this.",
+                    RuntimeWarning,
+                )
             else:
                 # Clear the cache as the `get_by_natural_key()` call will cache
                 # the renamed ContentType instance by its old model name.
