@@ -3848,6 +3848,27 @@ class AutodetectorTests(BaseAutodetectorTests):
             unique_together={("title", "newfield2")},
         )
 
+    def test_no_changes_when_together_option_type_differs(self):
+        changes = self.get_changes(
+            [
+                ModelState(
+                    "testapp",
+                    "Author",
+                    [("id", models.AutoField(primary_key=True)), ("name", models.CharField(max_length=200))],
+                    options={"unique_together": {("name",)}},
+                )
+            ],
+            [
+                ModelState(
+                    "testapp",
+                    "Author",
+                    [("id", models.AutoField(primary_key=True)), ("name", models.CharField(max_length=200))],
+                    options={"unique_together": [["name"]]},
+                )
+            ],
+        )
+        self.assertEqual(changes, {})
+
     def test_proxy(self):
         """The autodetector correctly deals with proxy models."""
         # First, we test adding a proxy model

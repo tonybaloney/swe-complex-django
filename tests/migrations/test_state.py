@@ -1575,6 +1575,31 @@ class StateRelationsTests(SimpleTestCase):
             [("tests", "comment"), ("tests", "post")],
         )
 
+    def test_rename_field_together_options(self):
+        project_state = ProjectState(
+            {
+                ("tests", "post"): ModelState(
+                    "tests",
+                    "Post",
+                    [("id", models.AutoField(primary_key=True)), ("text", models.TextField())],
+                    options={
+                        "index_together": [["text"]],
+                        "unique_together": [["text"]],
+                    },
+                )
+            }
+        )
+
+        project_state.rename_field("tests", "post", "text", "description")
+        self.assertEqual(
+            project_state.models["tests", "post"].options["index_together"],
+            {("description",)},
+        )
+        self.assertEqual(
+            project_state.models["tests", "post"].options["unique_together"],
+            {("description",)},
+        )
+
     def test_alter_field(self):
         project_state = self.get_base_project_state()
         self.assertEqual(

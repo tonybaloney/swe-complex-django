@@ -339,10 +339,10 @@ class ProjectState:
         options = model_state.options
         for option in ("index_together", "unique_together"):
             if option in options:
-                options[option] = [
-                    [new_name if n == old_name else n for n in together]
+                options[option] = {
+                    tuple(new_name if n == old_name else n for n in together)
                     for together in options[option]
-                ]
+                }
         # Fix to_fields to refer to the new field.
         delay = True
         references = get_references(self, model_key, (old_name, found))
@@ -751,6 +751,7 @@ class ModelState:
         self.name = name
         self.fields = dict(fields)
         self.options = options or {}
+        self.options = {**self.options, **self._get_together_options(self.options)}
         self.options.setdefault("indexes", [])
         self.options.setdefault("constraints", [])
         self.bases = bases or (models.Model,)
@@ -781,6 +782,14 @@ class ModelState:
                     "Indexes passed to ModelState require a name attribute. "
                     "%r doesn't have one." % index
                 )
+
+    @staticmethod
+    def _get_together_options(options):
+        return {
+            option: set(normalize_together(options[option]))
+            for option in ("index_together", "unique_together")
+            if option in options
+        }
 
     @cached_property
     def name_lower(self):
