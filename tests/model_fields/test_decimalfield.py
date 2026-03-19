@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection, models
 from django.test import TestCase
 
-from .models import BigD, Foo
+from .models import BigD, BigIntegerDecimal, Foo
 
 
 class DecimalFieldTests(TestCase):
@@ -140,3 +140,10 @@ class DecimalFieldTests(TestCase):
         obj = Foo.objects.create(a="bar", d=Decimal("8.320"))
         obj.refresh_from_db()
         self.assertEqual(obj.d.compare_total(Decimal("8.320")), Decimal("0"))
+
+    def test_integer_precision_for_large_values(self):
+        """Large integers (>15 digits) stored in DecimalField are retrieved
+        without precision loss (#36233)."""
+        obj = BigIntegerDecimal.objects.create(d=Decimal("9999999999999999"))
+        obj.refresh_from_db()
+        self.assertEqual(obj.d, Decimal("9999999999999999"))
