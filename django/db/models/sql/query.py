@@ -323,6 +323,8 @@ class Query(BaseExpression):
         self.extra = {}  # Maps col_alias -> (col_sql, params).
 
         self._filtered_relations = {}
+        # Tracks annotations added with select=False (via .alias()).
+        self._unpromoted_aliases = set()
 
     @property
     def output_field(self):
@@ -420,6 +422,7 @@ class Query(BaseExpression):
             obj.subq_aliases = self.subq_aliases.copy()
         obj.used_aliases = self.used_aliases.copy()
         obj._filtered_relations = self._filtered_relations.copy()
+        obj._unpromoted_aliases = self._unpromoted_aliases.copy()
         # Clear the cached_property, if it exists.
         obj.__dict__.pop("base_table", None)
         return obj
@@ -1237,8 +1240,10 @@ class Query(BaseExpression):
         annotation = annotation.resolve_expression(self, allow_joins=True, reuse=None)
         if select:
             self.append_annotation_mask([alias])
+            self._unpromoted_aliases.discard(alias)
         else:
             self.set_annotation_mask(set(self.annotation_select).difference({alias}))
+            self._unpromoted_aliases.add(alias)
         self.annotations[alias] = annotation
         if select and self.selected:
             self.selected[alias] = alias
@@ -2585,9 +2590,15 @@ class Query(BaseExpression):
                         annotation_names.append(f)
                         selected[f] = f
                     elif f in self.annotations:
+                        if f in self._unpromoted_aliases:
+                            raise FieldError(
+                                f"Cannot select the '{f}' alias. Use "
+                                "annotate() to promote it."
+                            )
                         raise FieldError(
-                            f"Cannot select the '{f}' alias. Use annotate() to "
-                            "promote it."
+                            f"Cannot select the '{f}' annotation because "
+                            "it is masked by a prior values() or "
+                            "values_list() call."
                         )
                     else:
                         # Call `names_to_path` to ensure a FieldError including

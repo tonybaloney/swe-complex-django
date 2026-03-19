@@ -1509,6 +1509,28 @@ class AliasTests(TestCase):
                 with self.assertRaisesMessage(FieldError, msg):
                     getattr(qs, operation)("rating_alias")
 
+    def test_values_masked_annotation(self):
+        qs = Book.objects.annotate(rating_alias=F("rating") - 1).values("name")
+        msg = (
+            "Cannot select the 'rating_alias' annotation because it is "
+            "masked by a prior values() or values_list() call."
+        )
+        for operation in ["values", "values_list"]:
+            with self.subTest(operation=operation):
+                with self.assertRaisesMessage(FieldError, msg):
+                    getattr(qs, operation)("rating_alias")
+
+    def test_values_list_masked_annotation(self):
+        qs = Book.objects.annotate(rating_alias=F("rating") - 1).values_list("name")
+        msg = (
+            "Cannot select the 'rating_alias' annotation because it is "
+            "masked by a prior values() or values_list() call."
+        )
+        for operation in ["values", "values_list"]:
+            with self.subTest(operation=operation):
+                with self.assertRaisesMessage(FieldError, msg):
+                    getattr(qs, operation)("rating_alias")
+
     def test_alias_after_values(self):
         qs = Book.objects.values_list("pk").alias(other_pk=F("pk"))
         self.assertEqual(qs.get(pk=self.b1.pk), (self.b1.pk,))
