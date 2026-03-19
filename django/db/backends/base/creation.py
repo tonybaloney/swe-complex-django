@@ -1,6 +1,7 @@
 import os
 import sys
 import warnings
+from importlib import import_module
 from io import StringIO
 
 from django.apps import apps
@@ -353,6 +354,14 @@ class BaseDatabaseCreation:
                 "DROP DATABASE %s" % self.connection.ops.quote_name(test_database_name)
             )
 
+    @staticmethod
+    def _import_test_module_or_case(dotted_path):
+        """Import a dotted path that may be either a module or a module attribute."""
+        try:
+            return import_module(dotted_path)
+        except ImportError:
+            return import_string(dotted_path)
+
     def mark_expected_failures_and_skips(self):
         """
         Mark tests in Django's test suite which are expected failures on this
@@ -366,7 +375,7 @@ class BaseDatabaseCreation:
             test_app = test_name.split(".")[0]
             # Importing a test app that isn't installed raises RuntimeError.
             if test_app in settings.INSTALLED_APPS:
-                test_case = import_string(test_case_name)
+                test_case = self._import_test_module_or_case(test_case_name)
                 test_method = getattr(test_case, test_method_name)
                 setattr(test_case, test_method_name, expectedFailure(test_method))
         for reason, tests in self.connection.features.django_test_skips.items():
@@ -376,7 +385,7 @@ class BaseDatabaseCreation:
                 # Importing a test app that isn't installed raises
                 # RuntimeError.
                 if test_app in settings.INSTALLED_APPS:
-                    test_case = import_string(test_case_name)
+                    test_case = self._import_test_module_or_case(test_case_name)
                     test_method = getattr(test_case, test_method_name)
                     setattr(test_case, test_method_name, skip(reason)(test_method))
 

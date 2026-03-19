@@ -332,6 +332,9 @@ class TestMarkTests(SimpleTestCase):
             "skip test function": {
                 "backends.base.test_creation.skip_test_function",
             },
+            "skip class method": {
+                "backends.base.test_creation.SkipTestClass.skip_function",
+            },
         }
         creation.mark_expected_failures_and_skips()
         self.assertIs(
@@ -348,3 +351,28 @@ class TestMarkTests(SimpleTestCase):
             skip_test_function.__unittest_skip_why__,
             "skip test function",
         )
+        self.assertIs(SkipTestClass.skip_function.__unittest_skip__, True)
+        self.assertEqual(
+            SkipTestClass.skip_function.__unittest_skip_why__,
+            "skip class method",
+        )
+
+    def test_mark_skips_with_unloaded_parent_modules(self):
+        """
+        mark_expected_failures_and_skips() doesn't crash when parent modules
+        haven't been imported (#35402).
+        """
+        test_connection = get_connection_copy()
+        creation = BaseDatabaseCreation(test_connection)
+        creation.connection.features.django_test_expected_failures = set()
+        creation.connection.features.django_test_skips = {
+            "skip test function": {
+                "backends.base.test_creation.skip_test_function",
+            },
+        }
+        with mock.patch(
+            "django.db.backends.base.creation.import_string",
+            side_effect=ImportError,
+        ):
+            creation.mark_expected_failures_and_skips()
+        self.assertIs(skip_test_function.__unittest_skip__, True)
