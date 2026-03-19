@@ -7,6 +7,17 @@ from django.test import TestCase
 
 @skipUnless(connection.vendor == "mysql", "MySQL tests")
 class TestFeatures(TestCase):
+    def test_minimum_database_version(self):
+        with mock.MagicMock() as _connection:
+            _connection.mysql_is_mariadb = True
+            database_features = DatabaseFeatures(_connection)
+            self.assertEqual(database_features.minimum_database_version, (10, 11))
+
+        with mock.MagicMock() as _connection:
+            _connection.mysql_is_mariadb = False
+            database_features = DatabaseFeatures(_connection)
+            self.assertEqual(database_features.minimum_database_version, (8, 4))
+
     def test_supports_transactions(self):
         """
         All storage engines except MyISAM support transactions.
