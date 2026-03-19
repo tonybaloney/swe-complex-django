@@ -1716,6 +1716,39 @@ class ModelStateTests(SimpleTestCase):
         with self.assertRaisesMessage(ValueError, msg):
             ModelState("app", "Model", [("field", field)], options=options)
 
+    def test_together_normalization(self):
+        """
+        *_together options are normalized to sets of tuples on ModelState
+        regardless of the input format.
+        """
+        fields = [
+            ("id", models.AutoField(primary_key=True)),
+            ("name", models.CharField(max_length=100)),
+            ("age", models.IntegerField()),
+        ]
+        tests = [
+            # List of lists.
+            [["name", "age"]],
+            # List of tuples.
+            [("name", "age")],
+            # Tuple of tuples.
+            (("name", "age"),),
+            # Set of tuples.
+            {("name", "age")},
+        ]
+        for option_name in ("unique_together", "index_together"):
+            for value in tests:
+                with self.subTest(option_name=option_name, value=value):
+                    state = ModelState(
+                        "app",
+                        "Model",
+                        fields,
+                        options={option_name: value},
+                    )
+                    normalized = state.options[option_name]
+                    self.assertIsInstance(normalized, set)
+                    self.assertEqual(normalized, {("name", "age")})
+
     def test_fields_immutability(self):
         """
         Rendering a model state doesn't alter its internal fields.

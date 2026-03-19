@@ -339,10 +339,10 @@ class ProjectState:
         options = model_state.options
         for option in ("index_together", "unique_together"):
             if option in options:
-                options[option] = [
-                    [new_name if n == old_name else n for n in together]
+                options[option] = {
+                    tuple(new_name if n == old_name else n for n in together)
                     for together in options[option]
-                ]
+                }
         # Fix to_fields to refer to the new field.
         delay = True
         references = get_references(self, model_key, (old_name, found))
@@ -753,6 +753,10 @@ class ModelState:
         self.options = options or {}
         self.options.setdefault("indexes", [])
         self.options.setdefault("constraints", [])
+        for option_name in ("index_together", "unique_together"):
+            value = self.options.get(option_name)
+            if value:
+                self.options[option_name] = {tuple(t) for t in value}
         self.bases = bases or (models.Model,)
         self.managers = managers or []
         for name, field in self.fields.items():
@@ -837,9 +841,9 @@ class ModelState:
             if name in ["apps", "app_label"]:
                 continue
             elif name in model._meta.original_attrs:
-                if name == "unique_together":
-                    ut = model._meta.original_attrs["unique_together"]
-                    options[name] = set(normalize_together(ut))
+                if name in ("index_together", "unique_together"):
+                    together = model._meta.original_attrs[name]
+                    options[name] = set(normalize_together(together))
                 elif name == "indexes":
                     indexes = [idx.clone() for idx in model._meta.indexes]
                     for index in indexes:
