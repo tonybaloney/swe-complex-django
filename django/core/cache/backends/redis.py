@@ -4,9 +4,13 @@ import pickle
 import random
 import re
 
+import django
 from django.core.cache.backends.base import DEFAULT_TIMEOUT, BaseCache
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
+
+
+DJANGO_LIB_NAME = f"redis-py(django_v{django.get_version()})"
 
 
 class RedisSerializer:
@@ -44,6 +48,7 @@ class RedisCacheClient:
         self._pools = {}
 
         self._client = self._lib.Redis
+        self._connection_classes = {}
 
         if isinstance(pool_class, str):
             pool_class = import_string(pool_class)
@@ -59,7 +64,28 @@ class RedisCacheClient:
             parser_class = import_string(parser_class)
         parser_class = parser_class or self._lib.connection.DefaultParser
 
-        self._pool_options = {"parser_class": parser_class, **options}
+        self._pool_options = {
+            "parser_class": parser_class,
+            "connection_class": self._get_connection_class(options),
+            **options,
+        }
+
+    def _get_connection_class(self, options):
+        connection_class = options.get("connection_class")
+        if connection_class:
+            return connection_class
+
+        is_ssl = any(server.startswith("rediss://") for server in self._servers)
+        connection_class_name = "SSLConnection" if is_ssl else "Connection"
+        base_connection_class = getattr(self._lib, connection_class_name)
+        if base_connection_class not in self._connection_classes:
+            class DjangoConnection(base_connection_class):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    self.lib_name = DJANGO_LIB_NAME
+
+            self._connection_classes[base_connection_class] = DjangoConnection
+        return self._connection_classes[base_connection_class]
 
     def _get_connection_pool_index(self, write):
         # Write to the first server. Read from other servers if there are more,

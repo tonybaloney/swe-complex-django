@@ -13,6 +13,8 @@ import time
 import unittest
 from functools import wraps
 from pathlib import Path
+
+import django
 from unittest import mock, skipIf
 
 from django.conf import settings
@@ -1963,6 +1965,14 @@ class RedisCacheTests(BaseCacheTests, TestCase):
 
     def test_get_client(self):
         self.assertIsInstance(cache._cache.get_client(), self.lib.Redis)
+
+    def test_django_redis_connection_sets_lib_name(self):
+        pool = cache._cache._get_connection_pool(write=True)
+        connection = pool.make_connection()
+        self.assertEqual(
+            connection.lib_name,
+            f"redis-py(django_v{django.get_version()})",
+        )
 
     def test_serializer_dumps(self):
         self.assertEqual(cache._cache._serializer.dumps(123), 123)
