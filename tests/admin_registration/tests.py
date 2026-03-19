@@ -61,9 +61,14 @@ class TestRegistration(SimpleTestCase):
         self.assertEqual(self.site.get_model_admin(Person).search_fields, ["name"])
 
     def test_get_model_admin_unregister_model(self):
-        msg = "The model Person is not registered."
+        msg = "The model 'Person' is not registered."
         with self.assertRaisesMessage(NotRegistered, msg):
             self.site.get_model_admin(Person)
+
+    def test_get_model_admin_unregister_model_string(self):
+        msg = "The model 'Person' is not registered."
+        with self.assertRaisesMessage(NotRegistered, msg):
+            self.site.get_model_admin("Person")
 
     def test_star_star_overrides(self):
         self.site.register(
