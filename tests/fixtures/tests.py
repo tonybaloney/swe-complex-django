@@ -9,7 +9,7 @@ from unittest import mock
 
 from django.apps import apps
 from django.contrib.sites.models import Site
-from django.core import management
+from django.core import management, serializers
 from django.core.exceptions import SuspiciousOperation
 from django.core.files.temp import NamedTemporaryFile
 from django.core.management import CommandError
@@ -1326,6 +1326,55 @@ class ForwardReferenceTests(DumpDataAssertMixin, TestCase):
             '"fields": {"key": "t3", "other_thing": null, "other_things": []}}]',
             natural_primary_keys=True,
             natural_foreign_keys=True,
+        )
+
+    def test_m2m_natural_key_serialization_is_deterministic(self):
+        t1 = NaturalKeyThing.objects.create(key="t1")
+        t3 = NaturalKeyThing.objects.create(key="t3")
+        t2 = NaturalKeyThing.objects.create(key="t2")
+        t1.other_things.add(t3, t2)
+
+        python_data = serializers.serialize(
+            "python",
+            [t1],
+            use_natural_foreign_keys=True,
+            use_natural_primary_keys=True,
+        )
+        self.assertEqual(
+            python_data,
+            [
+                {
+                    "model": "fixtures.naturalkeything",
+                    "fields": {
+                        "key": "t1",
+                        "other_thing": None,
+                        "other_things": [("t2",), ("t3",)],
+                    },
+                }
+            ],
+        )
+
+        xml_data = serializers.serialize(
+            "xml",
+            [t1],
+            use_natural_foreign_keys=True,
+            use_natural_primary_keys=True,
+        )
+        self.assertXMLEqual(
+            xml_data,
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <django-objects version="1.0">
+                <object model="fixtures.naturalkeything">
+                    <field name="key" type="CharField">t1</field>
+                    <field name="other_thing" rel="ManyToOneRel" to="fixtures.naturalkeything"><None/></field>
+                    <field name="other_things" rel="ManyToManyRel" to="fixtures.naturalkeything">
+                        <object><natural>t2</natural></object>
+                        <object><natural>t3</natural></object>
+                    </field>
+                </object>
+            </django-objects>
+            """,
         )
 
 

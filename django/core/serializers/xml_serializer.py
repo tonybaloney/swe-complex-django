@@ -177,7 +177,8 @@ class Serializer(base.Serializer):
                     chunk_size = (
                         2000 if getattr(attr, "prefetch_cache_name", None) else None
                     )
-                    return attr.iterator(chunk_size)
+                    queryset = self._order_m2m_queryset_for_serialization(attr.all())
+                    return queryset.iterator(chunk_size)
 
             else:
 
