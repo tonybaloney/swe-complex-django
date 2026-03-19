@@ -226,6 +226,9 @@ Minor features
   parameter. This allows providing database hints to database routers to assist
   them in :ref:`making routing decisions <topics-db-multi-db-hints>`.
 
+* :class:`~django.contrib.postgres.constraints.ExclusionConstraint` now supports
+  ``Hash`` as an :attr:`~ExclusionConstraint.index_type`.
+
 :mod:`django.contrib.staticfiles`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

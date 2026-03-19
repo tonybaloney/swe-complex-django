@@ -36,9 +36,10 @@ class ExclusionConstraint(CheckPostgresInstalledMixin, BaseConstraint):
         violation_error_code=None,
         violation_error_message=None,
     ):
-        if index_type and index_type.lower() not in {"gist", "spgist"}:
+        if index_type and index_type.lower() not in {"gist", "spgist", "hash"}:
             raise ValueError(
-                "Exclusion constraints only support GiST or SP-GiST indexes."
+                "Exclusion constraints only support GiST, SP-GiST, and Hash "
+                "indexes."
             )
         if not expressions:
             raise ValueError(

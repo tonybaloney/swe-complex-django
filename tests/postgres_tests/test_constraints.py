@@ -299,7 +299,10 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             )
 
     def test_invalid_index_type(self):
-        msg = "Exclusion constraints only support GiST or SP-GiST indexes."
+        msg = (
+            "Exclusion constraints only support GiST, SP-GiST, and Hash "
+            "indexes."
+        )
         with self.assertRaisesMessage(ValueError, msg):
             ExclusionConstraint(
                 index_type="gin",
@@ -423,6 +426,16 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             "<ExclusionConstraint: index_type='SPGiST' expressions=["
             "(F(datespan), '-|-')] name='exclude_overlapping' "
             "condition=(AND: ('cancelled', False))>",
+        )
+        constraint = ExclusionConstraint(
+            name="exclude_equal",
+            expressions=[(F("room"), RangeOperators.EQUAL)],
+            index_type="Hash",
+        )
+        self.assertEqual(
+            repr(constraint),
+            "<ExclusionConstraint: index_type='Hash' expressions=["
+            "(F(room), '=')] name='exclude_equal'>",
         )
         constraint = ExclusionConstraint(
             name="exclude_overlapping",
@@ -645,6 +658,30 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
                 "index_type": "SPGIST",
                 "expressions": [
                     ("datespan", RangeOperators.OVERLAPS),
+                    ("room", RangeOperators.EQUAL),
+                ],
+            },
+        )
+
+    def test_deconstruct_hash_index_type(self):
+        constraint = ExclusionConstraint(
+            name="exclude_equal",
+            index_type="HASH",
+            expressions=[
+                ("room", RangeOperators.EQUAL),
+            ],
+        )
+        path, args, kwargs = constraint.deconstruct()
+        self.assertEqual(
+            path, "django.contrib.postgres.constraints.ExclusionConstraint"
+        )
+        self.assertEqual(args, ())
+        self.assertEqual(
+            kwargs,
+            {
+                "name": "exclude_equal",
+                "index_type": "HASH",
+                "expressions": [
                     ("room", RangeOperators.EQUAL),
                 ],
             },
@@ -1287,3 +1324,18 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
         msg = "Constraint “ints_equal” is violated."
         with self.assertRaisesMessage(ValidationError, msg):
             constraint.validate(RangesModel, RangesModel())
+
+    def test_hash_index_type(self):
+        constraint_name = "exclusion_equal_number_hash"
+        self.assertNotIn(constraint_name, self.get_constraints(Room._meta.db_table))
+        constraint = ExclusionConstraint(
+            name=constraint_name,
+            expressions=[("number", RangeOperators.EQUAL)],
+            index_type="hash",
+        )
+        with connection.schema_editor() as editor:
+            editor.add_constraint(Room, constraint)
+        self.assertIn(constraint_name, self.get_constraints(Room._meta.db_table))
+        Room.objects.create(number=1)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Room.objects.create(number=1)
