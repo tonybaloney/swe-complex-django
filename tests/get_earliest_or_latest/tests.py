@@ -265,3 +265,18 @@ class TestFirstLast(TestCase):
             qs.first()
         with self.assertRaisesMessage(TypeError, msg % "last"):
             qs.last()
+
+    def test_first_last_empty_order_by_no_pk_ordering(self):
+        """
+        Calling order_by() without arguments disables implicit pk ordering
+        in first()/last().
+        """
+        p1 = Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        Person.objects.create(name="Alice", birthday=datetime(1961, 2, 3))
+        qs = Person.objects.order_by()
+        # first()/last() should not add pk ordering when order_by() was
+        # explicitly called with no arguments.
+        result_first = qs.first()
+        result_last = qs.last()
+        self.assertIn(result_first, [p1, Person.objects.get(name="Alice")])
+        self.assertIn(result_last, [p1, Person.objects.get(name="Alice")])
