@@ -936,6 +936,22 @@ class RequestsTests(SimpleTestCase):
         self.assertEqual(request.read(13), b"--boundary\r\nC")
         self.assertEqual(request.POST, {"name": ["value"]})
 
+    def test_multipart_parser_can_be_overridden(self):
+        class Parser:
+            pass
+
+        request = WSGIRequest(
+            {
+                "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": "multipart/form-data; boundary=boundary",
+                "CONTENT_LENGTH": "0",
+                "wsgi.input": FakePayload(""),
+            }
+        )
+        request._multipart_parser = Parser
+
+        self.assertIs(request._multipart_parser, Parser)
+
     def test_POST_immutable_for_multipart(self):
         """
         MultiPartParser.parse() leaves request.POST immutable.

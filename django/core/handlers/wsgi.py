@@ -54,6 +54,8 @@ class LimitedStream(IOBase):
 
 
 class WSGIRequest(HttpRequest):
+    _multipart_parser = HttpRequest._multipart_parser
+
     def __init__(self, environ):
         script_name = get_script_name(environ)
         # If PATH_INFO is empty (e.g. accessing the SCRIPT_NAME URL without a
