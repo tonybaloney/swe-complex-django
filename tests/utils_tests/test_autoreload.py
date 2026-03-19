@@ -486,6 +486,19 @@ class TestRaiseLastException(SimpleTestCase):
             self.assertEqual(cm.exception.args[0], 1)
             self.assertEqual(cm.exception.__cause__.args[0], 2)
 
+    def test_raises_exception_with_original_cause(self):
+        exc_info = (
+            RuntimeError,
+            RuntimeError("Wrapper error"),
+            None,
+        )
+        exc_info[1].__cause__ = ValueError("Original error")
+
+        with mock.patch("django.utils.autoreload._exception", exc_info):
+            with self.assertRaisesMessage(RuntimeError, "Wrapper error") as cm:
+                autoreload.raise_last_exception()
+        self.assertEqual(cm.exception.__cause__.args[0], "Original error")
+
 
 class RestartWithReloaderTests(SimpleTestCase):
     executable = "/usr/bin/python"
