@@ -84,8 +84,9 @@ class HumanizeTests(SimpleTestCase):
             self.humanize_tester(test_list, result_list, "ordinal")
 
     def test_i18n_html_ordinal(self):
-        """Allow html in output on i18n strings"""
+        """Allow html in output on i18n strings."""
         test_list = (
+            "0",
             "1",
             "2",
             "3",
@@ -93,6 +94,7 @@ class HumanizeTests(SimpleTestCase):
             "11",
             "12",
             "13",
+            "81",
             "101",
             "102",
             "103",
@@ -101,13 +103,15 @@ class HumanizeTests(SimpleTestCase):
             None,
         )
         result_list = (
-            "1<sup>er</sup>",
+            "0<sup>e</sup>",
+            "1st",
             "2<sup>e</sup>",
             "3<sup>e</sup>",
             "4<sup>e</sup>",
             "11<sup>e</sup>",
             "12<sup>e</sup>",
             "13<sup>e</sup>",
+            "81<sup>er</sup>",
             "101<sup>er</sup>",
             "102<sup>e</sup>",
             "103<sup>e</sup>",
@@ -118,6 +122,12 @@ class HumanizeTests(SimpleTestCase):
 
         with translation.override("fr-fr"):
             self.humanize_tester(test_list, result_list, "ordinal", lambda x: x)
+
+    def test_ordinal_uses_special_context_for_one(self):
+        self.assertEqual(humanize.ordinal(1), "1st")
+
+        with translation.override("fr"):
+            self.assertEqual(humanize.pgettext("ordinal 1", "{}st").format(1), "1<sup>er</sup>")
 
     def test_intcomma(self):
         test_list = (
