@@ -325,7 +325,7 @@ class StringAgg(Aggregate):
     allow_order_by = True
     output_field = TextField()
 
-    def __init__(self, expression, delimiter, **extra):
+    def __init__(self, expression, delimiter=Value(","), **extra):
         self.delimiter = StringAggDelimiter(delimiter)
         super().__init__(expression, self.delimiter, **extra)
 
@@ -369,15 +369,18 @@ class StringAgg(Aggregate):
         return sql, (*params, *delimiter_params)
 
     def as_sqlite(self, compiler, connection, **extra_context):
+        c = self.copy()
+        if c.distinct and getattr(c.delimiter.value, "value", None) == ",":
+            c.source_expressions = c.source_expressions[:-1]
         if connection.get_database_version() < (3, 44):
-            return self.as_sql(
+            return c.as_sql(
                 compiler,
                 connection,
                 function="GROUP_CONCAT",
                 **extra_context,
             )
 
-        return self.as_sql(compiler, connection, **extra_context)
+        return c.as_sql(compiler, connection, **extra_context)
 
 
 class Sum(FixDurationInputMixin, Aggregate):
