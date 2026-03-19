@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection, models
 from django.test import TestCase
 
-from .models import BigD, Foo
+from .models import BigD, BigIntDecimal, Foo
 
 
 class DecimalFieldTests(TestCase):
@@ -140,3 +140,13 @@ class DecimalFieldTests(TestCase):
         obj = Foo.objects.create(a="bar", d=Decimal("8.320"))
         obj.refresh_from_db()
         self.assertEqual(obj.d.compare_total(Decimal("8.320")), Decimal("0"))
+
+    def test_roundtrip_large_integer(self):
+        """
+        Integers exceeding 15 significant digits are stored and retrieved
+        without precision loss (#36233).
+        """
+        value = Decimal("9999999999999999")
+        obj = BigIntDecimal.objects.create(d=value)
+        obj.refresh_from_db()
+        self.assertEqual(obj.d, value)
