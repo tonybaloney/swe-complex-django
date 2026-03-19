@@ -348,3 +348,34 @@ class TestMarkTests(SimpleTestCase):
             skip_test_function.__unittest_skip_why__,
             "skip test function",
         )
+
+    def test_mark_expected_failures_and_skips_with_unloaded_module(self):
+        """
+        mark_expected_failures_and_skips() doesn't crash when the test
+        module hasn't been imported as an attribute on its parent package.
+        """
+        import backends.base as backends_base
+
+        test_connection = get_connection_copy()
+        creation = BaseDatabaseCreation(test_connection)
+        creation.connection.features.django_test_expected_failures = {
+            "backends.base.test_creation.expected_failure_test_function",
+        }
+        creation.connection.features.django_test_skips = {
+            "skip test function": {
+                "backends.base.test_creation.skip_test_function",
+            },
+        }
+        # Simulate the submodule not being an attribute of its parent
+        # package, as would be the case when running a subset of tests.
+        test_creation_ref = backends_base.test_creation
+        delattr(backends_base, "test_creation")
+        try:
+            creation.mark_expected_failures_and_skips()
+        finally:
+            backends_base.test_creation = test_creation_ref
+        self.assertIs(skip_test_function.__unittest_skip__, True)
+        self.assertIs(
+            expected_failure_test_function.__unittest_expecting_failure__,
+            True,
+        )
