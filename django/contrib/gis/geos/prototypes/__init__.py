@@ -20,6 +20,14 @@ from django.contrib.gis.geos.prototypes.coordseq import (  # NOQA
     cs_setz,
     get_cs,
 )
+from django.contrib.gis.geos.libgeos import geos_version_tuple
+
+if geos_version_tuple() >= (3, 14):
+    from django.contrib.gis.geos.prototypes.coordseq import (  # NOQA
+        cs_getm,
+        cs_hasm,
+        cs_setm,
+    )
 from django.contrib.gis.geos.prototypes.geom import (  # NOQA
     create_collection,
     create_empty_polygon,

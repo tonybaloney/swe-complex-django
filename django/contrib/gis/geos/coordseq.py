@@ -9,7 +9,7 @@ from ctypes import byref, c_byte, c_double, c_uint
 from django.contrib.gis.geos import prototypes as capi
 from django.contrib.gis.geos.base import GEOSBase
 from django.contrib.gis.geos.error import GEOSException
-from django.contrib.gis.geos.libgeos import CS_PTR
+from django.contrib.gis.geos.libgeos import CS_PTR, geos_version_tuple
 from django.contrib.gis.shortcuts import numpy
 
 
@@ -24,6 +24,9 @@ class GEOSCoordSeq(GEOSBase):
             raise TypeError("Coordinate sequence should initialize with a CS_PTR.")
         self._ptr = ptr
         self._z = z
+        self._m = (
+            geos_version_tuple() >= (3, 14) and bool(capi.cs_hasm(self.ptr))
+        )
 
     def __iter__(self):
         "Iterate over each point in the coordinate sequence."
@@ -55,7 +58,10 @@ class GEOSCoordSeq(GEOSBase):
                 "Must set coordinate with a sequence (list, tuple, or numpy array)."
             )
         # Checking the dims of the input
-        if self.dims == 3 and self._z:
+        if self._m:
+            n_args = 3 + self._z
+            point_setter = self._set_point_nd
+        elif self._z and self.dims == 3:
             n_args = 3
             point_setter = self._set_point_3d
         else:
@@ -86,6 +92,9 @@ class GEOSCoordSeq(GEOSBase):
     def _get_z(self, index):
         return capi.cs_getz(self.ptr, index, byref(c_double()))
 
+    def _get_m(self, index):
+        return capi.cs_getm(self.ptr, index, byref(c_double()))
+
     def _set_x(self, index, value):
         capi.cs_setx(self.ptr, index, value)
 
@@ -95,8 +104,13 @@ class GEOSCoordSeq(GEOSBase):
     def _set_z(self, index, value):
         capi.cs_setz(self.ptr, index, value)
 
+    def _set_m(self, index, value):
+        capi.cs_setm(self.ptr, index, value)
+
     @property
     def _point_getter(self):
+        if self._m:
+            return self._get_point_nd
         return self._get_point_3d if self.dims == 3 and self._z else self._get_point_2d
 
     def _get_point_2d(self, index):
@@ -104,6 +118,13 @@ class GEOSCoordSeq(GEOSBase):
 
     def _get_point_3d(self, index):
         return (self._get_x(index), self._get_y(index), self._get_z(index))
+
+    def _get_point_nd(self, index):
+        "Return point coordinates including the M dimension."
+        coords = (self._get_x(index), self._get_y(index))
+        if self._z:
+            coords += (self._get_z(index),)
+        return coords + (self._get_m(index),)
 
     def _set_point_2d(self, index, value):
         x, y = value
@@ -115,6 +136,15 @@ class GEOSCoordSeq(GEOSBase):
         self._set_x(index, x)
         self._set_y(index, y)
         self._set_z(index, z)
+
+    def _set_point_nd(self, index, value):
+        "Set point coordinates including the M dimension."
+        i = iter(value)
+        self._set_x(index, next(i))
+        self._set_y(index, next(i))
+        if self._z:
+            self._set_z(index, next(i))
+        self._set_m(index, next(i))
 
     # #### Ordinate getting and setting routines ####
     def getOrdinate(self, dimension, index):
@@ -153,6 +183,16 @@ class GEOSCoordSeq(GEOSBase):
         "Set Z with the value at the given index."
         self.setOrdinate(2, index, value)
 
+    def getM(self, index):
+        "Get M with the value at the given index."
+        self._checkindex(index)
+        return self._get_m(index)
+
+    def setM(self, index, value):
+        "Set M with the value at the given index."
+        self._checkindex(index)
+        self._set_m(index, value)
+
     # ### Dimensions ###
     @property
     def size(self):
@@ -172,6 +212,15 @@ class GEOSCoordSeq(GEOSBase):
         """
         return self._z
 
+    @property
+    def hasm(self):
+        "Return whether this coordinate sequence has an M dimension."
+        if geos_version_tuple() < (3, 14):
+            raise NotImplementedError(
+                "GEOSCoordSeq with an M dimension requires GEOS 3.14+."
+            )
+        return self._m
+
     # ### Other Methods ###
     def clone(self):
         "Clone this coordinate sequence."
@@ -184,11 +233,13 @@ class GEOSCoordSeq(GEOSBase):
         # have a Z dimension.
         if self.hasz:
             substr = "%s,%s,%s "
+            get_point = self._get_point_3d
         else:
             substr = "%s,%s,0 "
+            get_point = self._get_point_2d
         return (
             "<coordinates>%s</coordinates>"
-            % "".join(substr % self[i] for i in range(len(self))).strip()
+            % "".join(substr % get_point(i) for i in range(len(self))).strip()
         )
 
     @property

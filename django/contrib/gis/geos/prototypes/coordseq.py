@@ -1,6 +1,6 @@
 from ctypes import POINTER, c_byte, c_double, c_int, c_uint
 
-from django.contrib.gis.geos.libgeos import CS_PTR, GEOM_PTR, GEOSFuncFactory
+from django.contrib.gis.geos.libgeos import CS_PTR, GEOM_PTR, GEOSFuncFactory, geos_version_tuple
 from django.contrib.gis.geos.prototypes.errcheck import GEOSException, last_arg_byref
 
 
@@ -87,6 +87,16 @@ cs_getz = CsOperation("GEOSCoordSeq_getZ", get=True)
 cs_setx = CsOperation("GEOSCoordSeq_setX")
 cs_sety = CsOperation("GEOSCoordSeq_setY")
 cs_setz = CsOperation("GEOSCoordSeq_setZ")
+
+# For getting and setting m (GEOS 3.14+).
+if geos_version_tuple() >= (3, 14):
+    cs_getm = CsOperation("GEOSCoordSeq_getM", get=True)
+    cs_setm = CsOperation("GEOSCoordSeq_setM")
+    cs_hasm = GEOSFuncFactory(
+        "GEOSCoordSeq_hasM",
+        restype=c_byte,
+        argtypes=[CS_PTR],
+    )
 
 # These routines return size & dimensions.
 cs_getsize = CsInt("GEOSCoordSeq_getSize")
