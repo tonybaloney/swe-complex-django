@@ -149,7 +149,12 @@ class Command(BaseCommand):
         if self.post_process and hasattr(self.storage, "post_process"):
             processor = self.storage.post_process(found_files, dry_run=self.dry_run)
             for original_path, processed_path, processed in processor:
-                if isinstance(processed, Exception):
+                if type(processed) is ValueError:
+                    raise CommandError(
+                        "Post-processing '%s' failed!\n\n%s"
+                        % (original_path, processed)
+                    )
+                elif isinstance(processed, Exception):
                     self.stderr.write("Post-processing '%s' failed!" % original_path)
                     # Add a blank line before the traceback, otherwise it's
                     # too easy to miss the relevant part of the error message.
