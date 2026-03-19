@@ -14,6 +14,7 @@ from django.contrib.staticfiles.management.commands.collectstatic import (
     Command as CollectstaticCommand,
 )
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import SimpleTestCase, override_settings
 
 from .cases import CollectionTestCase
@@ -366,10 +367,10 @@ class TestHashedFiles:
         post_processing indicates the origin of the error when it fails.
         """
         finders.get_finder.cache_clear()
-        err = StringIO()
-        with self.assertRaises(Exception):
-            call_command("collectstatic", interactive=False, verbosity=0, stderr=err)
-        self.assertEqual("Post-processing 'faulty.css' failed!\n\n", err.getvalue())
+        with self.assertRaises(CommandError) as cm:
+            call_command("collectstatic", interactive=False, verbosity=0)
+        self.assertIn("Post-processing 'faulty.css' failed!", str(cm.exception))
+        self.assertIn("could not be found", str(cm.exception))
         self.assertPostCondition()
 
     @override_settings(
