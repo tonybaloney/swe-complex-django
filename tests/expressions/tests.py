@@ -2504,9 +2504,14 @@ class ValueTests(TestCase):
         # This test might need to be revisited later on if #25425 is enforced.
         compiler = Time.objects.all().query.get_compiler(connection=connection)
         value = Value("foo")
-        self.assertEqual(value.as_sql(compiler, connection), ("%s", ["foo"]))
+        self.assertEqual(value.as_sql(compiler, connection), ("%s", ("foo",)))
         value = Value("foo", output_field=CharField())
-        self.assertEqual(value.as_sql(compiler, connection), ("%s", ["foo"]))
+        self.assertEqual(value.as_sql(compiler, connection), ("%s", ("foo",)))
+
+    def test_params_type_in_combined_expression(self):
+        compiler = Time.objects.all().query.get_compiler(connection=connection)
+        _, params = (Value("lhs") + Value("rhs")).as_sql(compiler, connection)
+        self.assertEqual(params, ("lhs", "rhs"))
 
     def test_output_field_decimalfield(self):
         Time.objects.create()
