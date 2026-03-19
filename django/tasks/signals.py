@@ -60,5 +60,5 @@ def log_task_finished(sender, task_result, **kwargs):
         task_result.task.module_path,
         task_result.status,
         # Signal is sent inside exception handlers, so exc_info() is available.
-        exc_info=sys.exc_info(),
+        exc_info=sys.exc_info() if task_result.status == TaskResultStatus.FAILED else None,
     )

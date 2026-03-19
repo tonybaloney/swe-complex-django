@@ -217,6 +217,12 @@ class ImmediateBackendTestCase(SimpleTestCase):
         self.assertIn("state=SUCCESSFUL", captured_logs.output[2])
         self.assertIn(result.id, captured_logs.output[2])
 
+    def test_enqueue_logs_no_exc_info(self):
+        with self.assertLogs("django.tasks", level="DEBUG") as captured_logs:
+            test_tasks.noop_task.enqueue()
+
+        self.assertNotIn("NoneType", captured_logs.output[2])
+
     def test_failed_logs(self):
         with self.assertLogs("django.tasks", level="DEBUG") as captured_logs:
             result = test_tasks.failing_task_value_error.enqueue()
