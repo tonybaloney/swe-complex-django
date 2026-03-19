@@ -137,6 +137,18 @@ All attributes should be considered read-only, unless stated otherwise.
     ``enctype="multipart/form-data"``. Otherwise, ``FILES`` will be a blank
     dictionary-like object.
 
+.. attribute:: HttpRequest.multipart_parser_class
+
+    .. versionadded:: 6.1
+
+    The class used to parse ``multipart/form-data`` request bodies. Defaults
+    to :class:`~django.http.multipartparser.MultiPartParser`.
+
+    You can write to this attribute to change the parser class used when
+    processing file uploads. It cannot be changed after the upload has been
+    processed (i.e. after accessing :attr:`HttpRequest.FILES` or
+    :attr:`HttpRequest.POST` for ``multipart/form-data`` requests).
+
 .. attribute:: HttpRequest.META
 
     A dictionary containing all available HTTP headers. Available headers

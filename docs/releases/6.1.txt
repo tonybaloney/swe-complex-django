@@ -295,7 +295,9 @@ Pagination
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* :attr:`~django.http.HttpRequest.multipart_parser_class` is now a pluggable
+  attribute on :class:`~django.http.HttpRequest`, allowing customization of the
+  multipart parser class used for file uploads.
 
 Security
 ~~~~~~~~

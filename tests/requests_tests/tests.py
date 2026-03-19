@@ -13,7 +13,11 @@ from django.http import (
     RawPostDataException,
     UnreadablePostError,
 )
-from django.http.multipartparser import MAX_TOTAL_HEADER_SIZE, MultiPartParserError
+from django.http.multipartparser import (
+    MAX_TOTAL_HEADER_SIZE,
+    MultiPartParser,
+    MultiPartParserError,
+)
 from django.http.request import split_domain_port
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.test.client import BOUNDARY, MULTIPART_CONTENT, FakePayload
@@ -1111,6 +1115,83 @@ class RequestsTests(SimpleTestCase):
         request_copy = copy.deepcopy(request)
         request.session["key"] = "value"
         self.assertEqual(request_copy.session, {})
+
+    def test_multipart_parser_class_default(self):
+        request = HttpRequest()
+        self.assertIs(request.multipart_parser_class, MultiPartParser)
+
+    def test_multipart_parser_class_setting(self):
+        class CustomMultiPartParser(MultiPartParser):
+            pass
+
+        request = HttpRequest()
+        request.multipart_parser_class = CustomMultiPartParser
+        self.assertIs(request.multipart_parser_class, CustomMultiPartParser)
+
+    def test_multipart_parser_class_after_upload_raises(self):
+        request = HttpRequest()
+        request._files = "fake"
+        msg = (
+            "You cannot set the multipart parser class after the upload has "
+            "been processed."
+        )
+        with self.assertRaisesMessage(AttributeError, msg):
+            request.multipart_parser_class = MultiPartParser
+
+    def test_multipart_parser_class_subclass(self):
+        class CustomMultiPartParser(MultiPartParser):
+            pass
+
+        class CustomWSGIRequest(WSGIRequest):
+            multipart_parser_class = CustomMultiPartParser
+
+        payload = FakePayload(
+            "\r\n".join(
+                [
+                    f"--{BOUNDARY}",
+                    'Content-Disposition: form-data; name="name"',
+                    "",
+                    "value",
+                    f"--{BOUNDARY}--",
+                ]
+            )
+        )
+        request = CustomWSGIRequest(
+            {
+                "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": MULTIPART_CONTENT,
+                "CONTENT_LENGTH": len(payload),
+                "wsgi.input": payload,
+            }
+        )
+        self.assertEqual(request.POST["name"], "value")
+
+    def test_multipart_parser_class_instance(self):
+        payload = FakePayload(
+            "\r\n".join(
+                [
+                    f"--{BOUNDARY}",
+                    'Content-Disposition: form-data; name="name"',
+                    "",
+                    "value",
+                    f"--{BOUNDARY}--",
+                ]
+            )
+        )
+        request = WSGIRequest(
+            {
+                "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": MULTIPART_CONTENT,
+                "CONTENT_LENGTH": len(payload),
+                "wsgi.input": payload,
+            }
+        )
+
+        class CustomMultiPartParser(MultiPartParser):
+            pass
+
+        request.multipart_parser_class = CustomMultiPartParser
+        self.assertEqual(request.POST["name"], "value")
 
 
 class HostValidationTests(SimpleTestCase):
