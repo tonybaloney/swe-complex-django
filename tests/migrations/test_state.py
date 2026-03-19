@@ -1562,6 +1562,26 @@ class StateRelationsTests(SimpleTestCase):
         )
         self.assertEqual(field, renamed_field)
 
+    def test_rename_field_unique_together_type(self):
+        """rename_field() preserves set-of-tuples type for unique_together."""
+        project_state = ProjectState()
+        project_state.add_model(
+            ModelState(
+                app_label="tests",
+                name="Pony",
+                fields=[
+                    ("id", models.AutoField(primary_key=True)),
+                    ("pink", models.IntegerField()),
+                    ("weight", models.IntegerField()),
+                ],
+                options={"unique_together": {("pink", "weight")}},
+            )
+        )
+        project_state.rename_field("tests", "pony", "pink", "colour")
+        updated = project_state.models["tests", "pony"].options["unique_together"]
+        self.assertIsInstance(updated, set)
+        self.assertEqual(updated, {("colour", "weight")})
+
     def test_rename_field_no_relations(self):
         project_state = self.get_base_project_state()
         self.assertEqual(

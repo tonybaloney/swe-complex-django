@@ -3334,14 +3334,13 @@ class OperationTests(OperationTestBase):
         new_state = project_state.clone()
         operation.state_forwards("test_rnflut", new_state)
         # unique_together has the renamed column.
-        self.assertIn(
-            "blue",
-            new_state.models["test_rnflut", "pony"].options["unique_together"][0],
-        )
-        self.assertNotIn(
-            "pink",
-            new_state.models["test_rnflut", "pony"].options["unique_together"][0],
-        )
+        unique_together = new_state.models[
+            "test_rnflut", "pony"
+        ].options["unique_together"]
+        self.assertIsInstance(unique_together, set)
+        (together,) = unique_together
+        self.assertIn("blue", together)
+        self.assertNotIn("pink", together)
         # Rename field.
         self.assertColumnExists("test_rnflut_pony", "pink")
         self.assertColumnNotExists("test_rnflut_pony", "blue")
@@ -3389,12 +3388,13 @@ class OperationTests(OperationTestBase):
         self.assertIn("blue", new_state.models["test_rnflit", "pony"].fields)
         self.assertNotIn("pink", new_state.models["test_rnflit", "pony"].fields)
         # index_together has the renamed column.
-        self.assertIn(
-            "blue", new_state.models["test_rnflit", "pony"].options["index_together"][0]
-        )
-        self.assertNotIn(
-            "pink", new_state.models["test_rnflit", "pony"].options["index_together"][0]
-        )
+        index_together = new_state.models[
+            "test_rnflit", "pony"
+        ].options["index_together"]
+        self.assertIsInstance(index_together, set)
+        (together,) = index_together
+        self.assertIn("blue", together)
+        self.assertNotIn("pink", together)
 
         # Rename field.
         self.assertColumnExists("test_rnflit_pony", "pink")

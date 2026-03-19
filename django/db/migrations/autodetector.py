@@ -1768,7 +1768,7 @@ class MigrationAutodetector:
             )
 
             new_value = new_model_state.options.get(option_name)
-            new_value = set(new_value) if new_value else set()
+            new_value = {tuple(t) for t in new_value} if new_value else set()
 
             if old_value != new_value:
                 dependencies = []
