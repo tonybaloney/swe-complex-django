@@ -95,8 +95,10 @@ class SimpleIndexesTests(SimpleTestCase):
 
     def test_index_fields_strings(self):
         msg = "Index.fields must contain only strings with field names."
-        with self.assertRaisesMessage(ValueError, msg):
-            models.Index(fields=[models.F("title")])
+        for fields in ([models.F("title")], [None], [1], [True]):
+            with self.subTest(fields=fields):
+                with self.assertRaisesMessage(ValueError, msg):
+                    models.Index(fields=fields)
 
     def test_fields_tuple(self):
         self.assertEqual(models.Index(fields=("title",)).fields, ["title"])
