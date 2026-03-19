@@ -64,7 +64,9 @@ class GEOSGeometryBase(GEOSBase):
         # Setting the coordinate sequence for the geometry (will be None on
         # geometries that do not have coordinate sequences)
         self._cs = (
-            GEOSCoordSeq(capi.get_cs(self.ptr), self.hasz) if self.has_cs else None
+            GEOSCoordSeq(capi.get_cs(self.ptr), self.hasz, self.hasm if geos_version_tuple() >= (3, 12) else False)
+            if self.has_cs
+            else None
         )
 
     def __copy__(self):
