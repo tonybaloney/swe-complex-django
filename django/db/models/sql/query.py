@@ -2585,9 +2585,15 @@ class Query(BaseExpression):
                         annotation_names.append(f)
                         selected[f] = f
                     elif f in self.annotations:
+                        detail = (
+                            f"It was excluded by a previous values() or "
+                            f"values_list() call. Include '{f}' in that "
+                            f"call to select it."
+                            if self.annotation_select
+                            else "Use annotate() to promote it."
+                        )
                         raise FieldError(
-                            f"Cannot select the '{f}' alias. Use annotate() to "
-                            "promote it."
+                            f"Cannot select the '{f}' alias. {detail}"
                         )
                     else:
                         # Call `names_to_path` to ensure a FieldError including

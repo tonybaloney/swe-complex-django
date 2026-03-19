@@ -1509,6 +1509,21 @@ class AliasTests(TestCase):
                 with self.assertRaisesMessage(FieldError, msg):
                     getattr(qs, operation)("rating_alias")
 
+    def test_chained_values_masked_annotation_error_message(self):
+        msg = (
+            "Cannot select the 'author_id' alias. It was excluded by a "
+            "previous values() or values_list() call. Include 'author_id' in "
+            "that call to select it."
+        )
+        qs = Book.objects.annotate(
+            author_name=F("authors__name"),
+            author_id=F("authors__id"),
+        ).values("author_name")
+        with self.assertRaisesMessage(FieldError, msg):
+            list(qs.values("author_id"))
+        with self.assertRaisesMessage(FieldError, msg):
+            list(qs.values_list("author_id"))
+
     def test_alias_after_values(self):
         qs = Book.objects.values_list("pk").alias(other_pk=F("pk"))
         self.assertEqual(qs.get(pk=self.b1.pk), (self.b1.pk,))
