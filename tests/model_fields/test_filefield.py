@@ -9,11 +9,11 @@ from django.core.exceptions import FieldError, SuspiciousFileOperation
 from django.core.files import File, temp
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.db import IntegrityError, models
-from django.test import TestCase, override_settings
+from django.db import IntegrityError, connection, models
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.test.utils import isolate_apps
 
-from .models import Document
+from .models import Document, temp_storage
 
 
 class FileFieldTests(TestCase):
@@ -209,3 +209,32 @@ class FileFieldTests(TestCase):
 
         document = MyDocument(myfile="test_file.py")
         self.assertEqual(document.myfile.field.model, MyDocument)
+
+
+class FileFieldTransactionTests(TransactionTestCase):
+    available_apps = ["model_fields"]
+
+    @isolate_apps("model_fields")
+    def test_auto_now_add_populated_before_upload_to(self):
+        """
+        auto_now_add fields are available when FileField.upload_to is called.
+        """
+
+        def upload_to_auto_now_add(instance, filename):
+            return f"{instance.created_at:%Y%m%d%H%M%S}/{filename}"
+
+        class DocumentWithAutoNowAdd(models.Model):
+            created_at = models.DateTimeField(auto_now_add=True)
+            myfile = models.FileField(storage=temp_storage, upload_to=upload_to_auto_now_add)
+
+        with connection.schema_editor() as editor:
+            editor.create_model(DocumentWithAutoNowAdd)
+        try:
+            document = DocumentWithAutoNowAdd.objects.create(
+                myfile=ContentFile(b"", name="example.txt")
+            )
+            self.assertRegex(document.myfile.name, r"^\d{14}/example\.txt$")
+            document.myfile.delete(save=False)
+        finally:
+            with connection.schema_editor() as editor:
+                editor.delete_model(DocumentWithAutoNowAdd)
