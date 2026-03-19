@@ -357,6 +357,96 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
         with self.assertRaisesMessage(GEOSException, msg):
             p.hasm
 
+    @skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
+    def test_coordseq_m_dimension(self):
+        """GEOSCoordSeq supports M dimension for XYM and XYZM geometries."""
+        # Test XYM Point.
+        pnt_xym = fromstr("POINT M (5 23 8)")
+        cs = pnt_xym.coord_seq
+        self.assertFalse(cs.hasz)
+        self.assertTrue(cs.hasm)
+        self.assertEqual(cs.getX(0), 5)
+        self.assertEqual(cs.getY(0), 23)
+        self.assertEqual(cs.getM(0), 8)
+        self.assertEqual(cs.tuple, (5.0, 23.0, 8.0))
+
+        # Test XYZM Point.
+        pnt_xyzm = fromstr("POINT ZM (5 23 8 100)")
+        cs = pnt_xyzm.coord_seq
+        self.assertTrue(cs.hasz)
+        self.assertTrue(cs.hasm)
+        self.assertEqual(cs.getX(0), 5)
+        self.assertEqual(cs.getY(0), 23)
+        self.assertEqual(cs.getZ(0), 8)
+        self.assertEqual(cs.getM(0), 100)
+        self.assertEqual(cs.tuple, (5.0, 23.0, 8.0, 100.0))
+
+        # Test setting M.
+        cs.setM(0, 42)
+        self.assertEqual(cs.getM(0), 42)
+
+    @skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
+    def test_coordseq_m_clone(self):
+        """Cloned coordinate sequence preserves M dimension flag."""
+        pnt = fromstr("POINT M (1 2 3)")
+        cs = pnt.coord_seq
+        cs_clone = cs.clone()
+        self.assertTrue(cs_clone.hasm)
+        self.assertFalse(cs_clone.hasz)
+        self.assertEqual(cs_clone.getM(0), 3)
+
+    @skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
+    def test_point_m_property(self):
+        """Point.m returns the M value for M-dimension geometries."""
+        pnt_xym = fromstr("POINT M (5 23 8)")
+        self.assertEqual(pnt_xym.m, 8)
+        self.assertIsNone(pnt_xym.z)
+
+        pnt_xyzm = fromstr("POINT ZM (5 23 8 100)")
+        self.assertEqual(pnt_xyzm.m, 100)
+        self.assertEqual(pnt_xyzm.z, 8)
+
+        # M is None for geometries without M dimension.
+        pnt_xy = fromstr("POINT (5 23)")
+        self.assertIsNone(pnt_xy.m)
+
+        # Setting M value.
+        pnt_xym.m = 42
+        self.assertEqual(pnt_xym.m, 42)
+
+    @skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
+    def test_point_m_len_and_indexing(self):
+        """Point __len__ and __getitem__ account for M dimension."""
+        pnt_xym = fromstr("POINT M (5 23 8)")
+        self.assertEqual(len(pnt_xym), 3)
+        self.assertEqual(pnt_xym[0], 5)
+        self.assertEqual(pnt_xym[1], 23)
+        self.assertEqual(pnt_xym[2], 8)
+        self.assertEqual(pnt_xym.tuple, (5.0, 23.0, 8.0))
+
+        pnt_xyzm = fromstr("POINT ZM (5 23 8 100)")
+        self.assertEqual(len(pnt_xyzm), 4)
+        self.assertEqual(pnt_xyzm[0], 5)
+        self.assertEqual(pnt_xyzm[1], 23)
+        self.assertEqual(pnt_xyzm[2], 8)
+        self.assertEqual(pnt_xyzm[3], 100)
+        self.assertEqual(pnt_xyzm.tuple, (5.0, 23.0, 8.0, 100.0))
+
+    @skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
+    def test_linestring_m_dimension(self):
+        """LineString supports M dimension for XYM and XYZM geometries."""
+        ls_xym = fromstr("LINESTRING M (0 0 10, 1 1 20, 2 2 30)")
+        self.assertTrue(ls_xym.hasm)
+        self.assertFalse(ls_xym.hasz)
+        self.assertEqual(ls_xym.m, [10.0, 20.0, 30.0])
+        self.assertIsNone(ls_xym.z)
+
+        ls_xyzm = fromstr("LINESTRING ZM (0 0 5 10, 1 1 6 20, 2 2 7 30)")
+        self.assertTrue(ls_xyzm.hasm)
+        self.assertTrue(ls_xyzm.hasz)
+        self.assertEqual(ls_xyzm.m, [10.0, 20.0, 30.0])
+        self.assertEqual(ls_xyzm.z, [5.0, 6.0, 7.0])
+
     def test_points(self):
         "Testing Point objects."
         prev = fromstr("POINT(0 0)")

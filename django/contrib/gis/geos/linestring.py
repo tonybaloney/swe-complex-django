@@ -80,8 +80,15 @@ class LineString(LinearGeometryMixin, GEOSGeometry):
 
         # Creating a coordinate sequence object because it is easier to
         # set the points using its methods.
-        cs = GEOSCoordSeq(capi.create_cs(ncoords, ndim), z=bool(ndim == 3))
-        point_setter = cs._set_point_3d if ndim == 3 else cs._set_point_2d
+        if ndim == 4:
+            cs = GEOSCoordSeq(capi.create_cs(ncoords, ndim), z=True, m=True)
+            point_setter = cs._set_point_4d
+        elif ndim == 3:
+            cs = GEOSCoordSeq(capi.create_cs(ncoords, ndim), z=True)
+            point_setter = cs._set_point_3d
+        else:
+            cs = GEOSCoordSeq(capi.create_cs(ncoords, ndim))
+            point_setter = cs._set_point_2d
 
         for i in range(ncoords):
             if numpy_coords:
@@ -112,11 +119,12 @@ class LineString(LinearGeometryMixin, GEOSGeometry):
 
     def _set_list(self, length, items):
         ndim = self._cs.dims
-        hasz = self._cs.hasz  # I don't understand why these are different
+        hasz = self._cs.hasz
+        hasm = self._cs.hasm
         srid = self.srid
 
         # create a new coordinate sequence and populate accordingly
-        cs = GEOSCoordSeq(capi.create_cs(length, ndim), z=hasz)
+        cs = GEOSCoordSeq(capi.create_cs(length, ndim), z=hasz, m=hasm)
         for i, c in enumerate(items):
             cs[i] = c
 
@@ -135,7 +143,7 @@ class LineString(LinearGeometryMixin, GEOSGeometry):
         self._cs[index] = value
 
     def _checkdim(self, dim):
-        if dim not in (2, 3):
+        if dim not in (2, 3, 4):
             raise TypeError("Dimension mismatch.")
 
     # #### Sequence Properties ####
@@ -179,6 +187,14 @@ class LineString(LinearGeometryMixin, GEOSGeometry):
             return None
         else:
             return self._listarr(self._cs.getZ)
+
+    @property
+    def m(self):
+        "Return a list or numpy array of the M variable."
+        if not self._cs.hasm:
+            return None
+        else:
+            return self._listarr(self._cs.getM)
 
 
 # LinearRings are LineStrings used within Polygons.

@@ -8,7 +8,7 @@ from django.contrib.gis.geos.geometry import GEOSGeometry
 
 class Point(GEOSGeometry):
     _minlength = 2
-    _maxlength = 3
+    _maxlength = 4
     has_cs = True
 
     def __init__(self, x=None, y=None, z=None, srid=None):
@@ -59,20 +59,22 @@ class Point(GEOSGeometry):
     @classmethod
     def _create_point(cls, ndim, coords):
         """
-        Create a coordinate sequence, set X, Y, [Z], and create point
+        Create a coordinate sequence, set X, Y, [Z], [M], and create point
         """
         if not ndim:
             return capi.create_point(None)
 
-        if ndim < 2 or ndim > 3:
+        if ndim < 2 or ndim > 4:
             raise TypeError("Invalid point dimension: %s" % ndim)
 
         cs = capi.create_cs(c_uint(1), c_uint(ndim))
         i = iter(coords)
         capi.cs_setx(cs, 0, next(i))
         capi.cs_sety(cs, 0, next(i))
-        if ndim == 3:
+        if ndim >= 3:
             capi.cs_setz(cs, 0, next(i))
+        if ndim == 4:
+            capi.cs_setordinate(cs, 0, 3, next(i))
 
         return capi.create_point(cs)
 
@@ -98,13 +100,15 @@ class Point(GEOSGeometry):
             yield self[i]
 
     def __len__(self):
-        "Return the number of dimensions for this Point (either 0, 2 or 3)."
+        "Return the number of dimensions for this Point (either 0, 2, 3, or 4)."
         if self.empty:
             return 0
+        n = 2
         if self.hasz:
-            return 3
-        else:
-            return 2
+            n += 1
+        if self._cs.hasm:
+            n += 1
+        return n
 
     def _get_single_external(self, index):
         if index == 0:
@@ -112,7 +116,12 @@ class Point(GEOSGeometry):
         elif index == 1:
             return self.y
         elif index == 2:
-            return self.z
+            if self.hasz:
+                return self.z
+            else:
+                return self.m
+        elif index == 3:
+            return self.m
 
     _get_single_internal = _get_single_external
 
@@ -147,6 +156,18 @@ class Point(GEOSGeometry):
         if not self.hasz:
             raise GEOSException("Cannot set Z on 2D Point.")
         self._cs.setOrdinate(2, 0, value)
+
+    @property
+    def m(self):
+        "Return the M component of the Point."
+        return self._cs.getM(0) if self._cs.hasm else None
+
+    @m.setter
+    def m(self, value):
+        "Set the M component of the Point."
+        if not self._cs.hasm:
+            raise GEOSException("Cannot set M on a Point without M dimension.")
+        self._cs.setM(0, value)
 
     # ### Tuple setting and retrieval routines. ###
     @property

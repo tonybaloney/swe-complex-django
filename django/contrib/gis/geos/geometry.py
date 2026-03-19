@@ -63,9 +63,11 @@ class GEOSGeometryBase(GEOSBase):
         "Perform post-initialization setup."
         # Setting the coordinate sequence for the geometry (will be None on
         # geometries that do not have coordinate sequences)
-        self._cs = (
-            GEOSCoordSeq(capi.get_cs(self.ptr), self.hasz) if self.has_cs else None
-        )
+        if self.has_cs:
+            m = capi.geos_hasm(self.ptr) if geos_version_tuple() >= (3, 12) else False
+            self._cs = GEOSCoordSeq(capi.get_cs(self.ptr), self.hasz, m=m)
+        else:
+            self._cs = None
 
     def __copy__(self):
         """
