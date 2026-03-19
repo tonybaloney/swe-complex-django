@@ -3848,6 +3848,36 @@ class AutodetectorTests(BaseAutodetectorTests):
             unique_together={("title", "newfield2")},
         )
 
+    def test_rename_field_and_unique_together_with_list_value(self):
+        """Fields are renamed before updating list-based unique_together."""
+        book_unique_together_3 = ModelState(
+            "otherapp",
+            "Book",
+            [
+                ("id", models.AutoField(primary_key=True)),
+                ("title", models.CharField(max_length=200)),
+                ("newfield", models.CharField(max_length=100)),
+            ],
+            options={"unique_together": [["title", "newfield"]]},
+        )
+        book_unique_together_4 = ModelState(
+            "otherapp",
+            "Book",
+            [
+                ("id", models.AutoField(primary_key=True)),
+                ("title", models.CharField(max_length=200)),
+                ("newfield2", models.CharField(max_length=100)),
+            ],
+            options={"unique_together": [["title", "newfield2"]]},
+        )
+        changes = self.get_changes(
+            [self.author_empty, book_unique_together_3],
+            [self.author_empty, book_unique_together_4],
+            MigrationQuestioner({"ask_rename": True}),
+        )
+        self.assertNumberMigrations(changes, "otherapp", 1)
+        self.assertOperationTypes(changes, "otherapp", 0, ["RenameField"])
+
     def test_proxy(self):
         """The autodetector correctly deals with proxy models."""
         # First, we test adding a proxy model

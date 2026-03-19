@@ -8,6 +8,7 @@ from itertools import chain
 from django.conf import settings
 from django.db import models
 from django.db.migrations import operations
+from django.db.models.options import normalize_together
 from django.db.migrations.migration import Migration
 from django.db.migrations.operations.models import AlterModelOptions
 from django.db.migrations.optimizer import MigrationOptimizer
@@ -1768,7 +1769,7 @@ class MigrationAutodetector:
             )
 
             new_value = new_model_state.options.get(option_name)
-            new_value = set(new_value) if new_value else set()
+            new_value = set(normalize_together(new_value)) if new_value else set()
 
             if old_value != new_value:
                 dependencies = []
