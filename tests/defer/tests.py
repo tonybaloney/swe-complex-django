@@ -49,9 +49,9 @@ class DeferTests(AssertionMixin, TestCase):
         # of them except the model's primary key see #15494
         self.assert_delayed(qs.only("pk")[0], 3)
         # You can use 'pk' with reverse foreign key lookups.
-        # The related_id is always set even if it's not fetched from the DB,
-        # so pk and related_id are not deferred.
-        self.assert_delayed(self.s1.primary_set.only("pk")[0], 2)
+        # The related_id is deferred and the optimization to populate the
+        # relation is skipped, so pk and related_id are deferred.
+        self.assert_delayed(self.s1.primary_set.only("pk")[0], 3)
 
     def test_defer_only_chaining(self):
         qs = Primary.objects.all()
@@ -424,3 +424,14 @@ class DeferredRelationTests(TestCase):
         obj.second  # Accessing a deferred field.
         with self.assertNumQueries(0):
             obj.primary_o2o
+
+    def test_only_related_manager_optimization(self):
+        """
+        Iterating over a RelatedManager queryset with .only() that excludes
+        the FK field should not trigger N+1 queries.
+        """
+        s = Secondary.objects.create(first="x", second="y")
+        Primary.objects.create(name="p1", value="v1", related=s)
+        Primary.objects.create(name="p2", value="v2", related=s)
+        with self.assertNumQueries(1):
+            list(s.primary_set.only("name"))
