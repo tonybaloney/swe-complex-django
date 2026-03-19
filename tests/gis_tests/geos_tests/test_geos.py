@@ -347,8 +347,12 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
     def test_hasm(self):
         pnt_xym = fromstr("POINT M (5 23 8)")
         self.assertTrue(pnt_xym.hasm)
+        self.assertTrue(pnt_xym._cs.hasm)
+        self.assertEqual(pnt_xym.tuple, (5.0, 23.0, 8.0))
         pnt_xyzm = fromstr("POINT (5 23 8 0)")
         self.assertTrue(pnt_xyzm.hasm)
+        self.assertTrue(pnt_xyzm._cs.hasm)
+        self.assertEqual(pnt_xyzm.tuple, (5.0, 23.0, 8.0))
 
     @mock.patch("django.contrib.gis.geos.libgeos.geos_version", lambda: b"3.11.0")
     def test_hasm_geos_version(self):
