@@ -341,6 +341,29 @@ class TestHashedFiles:
             self.assertIn(source_map_data_uri, content)
         self.assertPostCondition()
 
+    def test_commented_out_css_references_ignored(self):
+        relpath = self.hashed_file_path("cached/comments.css")
+        self.assertEqual(relpath, "cached/comments.bd6255ad1312.css")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            self.assertIn(b"url(\"css/img/window.acae32e4532b.png\")", content)
+            self.assertIn(b"/* url('css/img/window.png') */", content)
+            self.assertIn(b"/* @import \"styles.css\" */", content)
+        self.assertPostCondition()
+
+    def test_commented_out_js_references_ignored(self):
+        relpath = self.hashed_file_path("cached/comments.js")
+        self.assertEqual(relpath, "cached/comments.8b96ef04f547.js")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            self.assertIn(b"import './module.js';", content)
+            self.assertIn(b"/*# sourceMappingURL=source_map.js.map */", content)
+            self.assertIn(
+                b"//# sourceMappingURL=source_map.js.99914b932bd3.map",
+                content,
+            )
+        self.assertPostCondition()
+
     @override_settings(
         STATICFILES_DIRS=[os.path.join(TEST_ROOT, "project", "faulty")],
         STATICFILES_FINDERS=["django.contrib.staticfiles.finders.FileSystemFinder"],

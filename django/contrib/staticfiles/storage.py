@@ -106,6 +106,11 @@ class HashedFilesMixin:
         ),
     )
     keep_intermediate_files = True
+    _comment_patterns = {
+        "*.css": re.compile(r"/\*.*?\*/", re.DOTALL),
+        "*.js": re.compile(r"/\*.*?\*/", re.DOTALL),
+    }
+    _comment_placeholder = "__COMMENT__"
 
     def __init__(self, *args, **kwargs):
         if self.support_js_module_import_aggregation:
@@ -371,6 +376,7 @@ class HashedFilesMixin:
                         content = original_file.read().decode("utf-8")
                     except UnicodeDecodeError as exc:
                         yield name, None, exc, False
+                    content, comments = self._replace_patterns_in_comments(path, content)
                     for extension, patterns in self._patterns.items():
                         if matches_patterns(path, (extension,)):
                             for pattern, template in patterns:
@@ -381,6 +387,7 @@ class HashedFilesMixin:
                                     content = pattern.sub(converter, content)
                                 except ValueError as exc:
                                     yield name, None, exc, False
+                    content = self._restore_comments(content, comments)
                     if hashed_file_exists:
                         self.delete(hashed_name)
                     # then save the processed result
@@ -412,6 +419,23 @@ class HashedFilesMixin:
                 hashed_files[hash_key] = hashed_name
 
                 yield name, hashed_name, processed, substitutions
+
+    def _replace_patterns_in_comments(self, path, content):
+        comments = []
+
+        def replace(match):
+            comments.append(match[0])
+            return f"{self._comment_placeholder}{len(comments) - 1}__"
+
+        for pattern, comment_pattern in self._comment_patterns.items():
+            if matches_patterns(path, (pattern,)):
+                return comment_pattern.sub(replace, content), comments
+        return content, comments
+
+    def _restore_comments(self, content, comments):
+        for index, comment in enumerate(comments):
+            content = content.replace(f"{self._comment_placeholder}{index}__", comment)
+        return content
 
     def clean_name(self, name):
         return name.replace("\\", "/")
