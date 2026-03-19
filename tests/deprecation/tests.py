@@ -16,12 +16,19 @@ class DjangoFilePrefixesTests(SimpleTestCase):
         self.addCleanup(django_file_prefixes.cache_clear)
 
     def test_no_file(self):
-        orig_file = django.__file__
-        try:
-            del django.__file__
-            self.assertEqual(django_file_prefixes(), ())
-        finally:
-            django.__file__ = orig_file
+        sentinel = object()
+        for file in (sentinel, None):
+            with self.subTest(file=file):
+                orig_file = django.__file__
+                try:
+                    if file is sentinel:
+                        del django.__file__
+                    else:
+                        django.__file__ = file
+                    self.assertEqual(django_file_prefixes(), ())
+                finally:
+                    django.__file__ = orig_file
+                django_file_prefixes.cache_clear()
 
     def test_with_file(self):
         prefixes = django_file_prefixes()
