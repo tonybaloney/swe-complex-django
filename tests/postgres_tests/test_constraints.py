@@ -299,13 +299,20 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             )
 
     def test_invalid_index_type(self):
-        msg = "Exclusion constraints only support GiST or SP-GiST indexes."
+        msg = "Exclusion constraints only support GiST, SP-GiST, or Hash indexes."
         with self.assertRaisesMessage(ValueError, msg):
             ExclusionConstraint(
                 index_type="gin",
                 name="exclude_invalid_index_type",
                 expressions=[(F("datespan"), RangeOperators.OVERLAPS)],
             )
+
+    def test_valid_hash_index_type(self):
+        ExclusionConstraint(
+            index_type="hash",
+            name="exclude_valid_hash_index_type",
+            expressions=[(F("datespan"), RangeOperators.OVERLAPS)],
+        )
 
     def test_invalid_expressions(self):
         msg = "The expressions must be a list of 2-tuples."
