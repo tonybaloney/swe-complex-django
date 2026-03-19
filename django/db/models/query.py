@@ -149,6 +149,9 @@ class ModelIterable(BaseIterable):
                 # Avoid overwriting objects loaded by, e.g., select_related().
                 if field.is_cached(obj):
                     continue
+                # Skip if the FK attribute is deferred to avoid N+1 queries.
+                if field.attname not in obj.__dict__:
+                    continue
                 rel_obj_id = rel_getter(obj)
                 try:
                     rel_obj = rel_objs[rel_obj_id]
