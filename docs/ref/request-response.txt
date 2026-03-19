@@ -218,6 +218,15 @@ All attributes should be considered read-only, unless stated otherwise.
     executed before URL resolving takes place (you can use it in
     :meth:`process_view` though).
 
+.. attribute:: HttpRequest.multipart_parser_class
+
+    .. versionadded:: 6.1
+
+    The class used to parse ``multipart/form-data`` request bodies. Defaults to
+    :class:`~django.http.multipartparser.MultiPartParser`. Subclasses of
+    :class:`HttpRequest` can override this attribute to customize multipart
+    parsing.
+
 Attributes set by application code
 ----------------------------------
 

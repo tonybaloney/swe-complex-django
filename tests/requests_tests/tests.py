@@ -13,7 +13,11 @@ from django.http import (
     RawPostDataException,
     UnreadablePostError,
 )
-from django.http.multipartparser import MAX_TOTAL_HEADER_SIZE, MultiPartParserError
+from django.http.multipartparser import (
+    MAX_TOTAL_HEADER_SIZE,
+    MultiPartParser,
+    MultiPartParserError,
+)
 from django.http.request import split_domain_port
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.test.client import BOUNDARY, MULTIPART_CONTENT, FakePayload
@@ -534,6 +538,38 @@ class RequestsTests(SimpleTestCase):
             }
         )
         self.assertEqual(request.POST, {})
+
+    def test_custom_multipart_parser_class(self):
+        class CustomMultiPartParser(MultiPartParser):
+            def parse(self):
+                post, files = super().parse()
+                post._mutable = True
+                post["custom"] = "true"
+                post._mutable = False
+                return post, files
+
+        payload = FakePayload(
+            "\r\n".join(
+                [
+                    f"--{BOUNDARY}",
+                    'Content-Disposition: form-data; name="name"',
+                    "",
+                    "value",
+                    f"--{BOUNDARY}--",
+                ]
+            )
+        )
+        request = WSGIRequest(
+            {
+                "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": MULTIPART_CONTENT,
+                "CONTENT_LENGTH": len(payload),
+                "wsgi.input": payload,
+            }
+        )
+        request.multipart_parser_class = CustomMultiPartParser
+        self.assertEqual(request.POST["name"], "value")
+        self.assertEqual(request.POST["custom"], "true")
 
     @override_settings(
         FILE_UPLOAD_HANDLERS=["requests_tests.tests.ErrorFileUploadHandler"]
