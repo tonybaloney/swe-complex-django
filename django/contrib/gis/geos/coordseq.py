@@ -9,7 +9,7 @@ from ctypes import byref, c_byte, c_double, c_uint
 from django.contrib.gis.geos import prototypes as capi
 from django.contrib.gis.geos.base import GEOSBase
 from django.contrib.gis.geos.error import GEOSException
-from django.contrib.gis.geos.libgeos import CS_PTR
+from django.contrib.gis.geos.libgeos import CS_PTR, geos_version_tuple
 from django.contrib.gis.shortcuts import numpy
 
 
@@ -20,6 +20,8 @@ class GEOSCoordSeq(GEOSBase):
 
     def __init__(self, ptr, z=False):
         "Initialize from a GEOS pointer."
+        # TODO when dropping support for GEOS 3.13 the z argument can be
+        # deprecated in favor of using the GEOS function GEOSCoordSeq_hasZ.
         if not isinstance(ptr, CS_PTR):
             raise TypeError("Coordinate sequence should initialize with a CS_PTR.")
         self._ptr = ptr
@@ -41,7 +43,7 @@ class GEOSCoordSeq(GEOSBase):
     def __getitem__(self, index):
         "Return the coordinate sequence value at the given index."
         self._checkindex(index)
-        return self._point_getter(index)
+        return self._get_point(index)
 
     def __setitem__(self, index, value):
         "Set the coordinate sequence value at the given index."
@@ -55,16 +57,11 @@ class GEOSCoordSeq(GEOSBase):
                 "Must set coordinate with a sequence (list, tuple, or numpy array)."
             )
         # Checking the dims of the input
-        if self.dims == 3 and self._z:
-            n_args = 3
-            point_setter = self._set_point_3d
-        else:
-            n_args = 2
-            point_setter = self._set_point_2d
+        n_args = self._num_ordinates
         if len(value) != n_args:
             raise TypeError("Dimension of value does not match.")
         self._checkindex(index)
-        point_setter(index, value)
+        self._set_point(index, value)
 
     # #### Internal Routines ####
     def _checkindex(self, index):
@@ -74,7 +71,7 @@ class GEOSCoordSeq(GEOSBase):
 
     def _checkdim(self, dim):
         "Check the given dimension."
-        if dim < 0 or dim > 2:
+        if dim < 0 or dim > 3:
             raise GEOSException(f'Invalid ordinate dimension: "{dim:d}"')
 
     def _get_x(self, index):
@@ -86,6 +83,9 @@ class GEOSCoordSeq(GEOSBase):
     def _get_z(self, index):
         return capi.cs_getz(self.ptr, index, byref(c_double()))
 
+    def _get_m(self, index):
+        return capi.cs_getm(self.ptr, index, byref(c_double()))
+
     def _set_x(self, index, value):
         capi.cs_setx(self.ptr, index, value)
 
@@ -95,26 +95,37 @@ class GEOSCoordSeq(GEOSBase):
     def _set_z(self, index, value):
         capi.cs_setz(self.ptr, index, value)
 
+    def _set_m(self, index, value):
+        capi.cs_setm(self.ptr, index, value)
+
     @property
-    def _point_getter(self):
-        return self._get_point_3d if self.dims == 3 and self._z else self._get_point_2d
+    def _num_ordinates(self):
+        "Return the number of ordinates per point."
+        n = 2
+        if self._z:
+            n += 1
+        if self.dims > n:
+            n += 1
+        return n
 
-    def _get_point_2d(self, index):
-        return (self._get_x(index), self._get_y(index))
+    def _get_point(self, index):
+        "Return coordinates as a tuple for the given index."
+        coords = (self._get_x(index), self._get_y(index))
+        if self._z:
+            coords += (self._get_z(index),)
+        if self.dims > len(coords):
+            coords += (self._get_m(index),)
+        return coords
 
-    def _get_point_3d(self, index):
-        return (self._get_x(index), self._get_y(index), self._get_z(index))
-
-    def _set_point_2d(self, index, value):
-        x, y = value
-        self._set_x(index, x)
-        self._set_y(index, y)
-
-    def _set_point_3d(self, index, value):
-        x, y, z = value
-        self._set_x(index, x)
-        self._set_y(index, y)
-        self._set_z(index, z)
+    def _set_point(self, index, value):
+        "Set coordinates from a sequence for the given index."
+        it = iter(value)
+        self._set_x(index, next(it))
+        self._set_y(index, next(it))
+        if self._z:
+            self._set_z(index, next(it))
+        if len(value) > 2 + int(self._z):
+            self._set_m(index, next(it))
 
     # #### Ordinate getting and setting routines ####
     def getOrdinate(self, dimension, index):
@@ -153,6 +164,14 @@ class GEOSCoordSeq(GEOSBase):
         "Set Z with the value at the given index."
         self.setOrdinate(2, index, value)
 
+    def getM(self, index):
+        "Get M with the value at the given index."
+        return self.getOrdinate(3, index)
+
+    def setM(self, index, value):
+        "Set M with the value at the given index."
+        self.setOrdinate(3, index, value)
+
     # ### Dimensions ###
     @property
     def size(self):
@@ -172,6 +191,18 @@ class GEOSCoordSeq(GEOSBase):
         """
         return self._z
 
+    @property
+    def hasm(self):
+        """
+        Return whether this coordinate sequence has M dimension.
+        """
+        if geos_version_tuple() >= (3, 14):
+            return capi.cs_hasm(self._ptr)
+        else:
+            raise NotImplementedError(
+                "GEOSCoordSeq with an M dimension requires GEOS 3.14+."
+            )
+
     # ### Other Methods ###
     def clone(self):
         "Clone this coordinate sequence."
@@ -180,25 +211,21 @@ class GEOSCoordSeq(GEOSBase):
     @property
     def kml(self):
         "Return the KML representation for the coordinates."
-        # Getting the substitution string depending on whether the coordinates
-        # have a Z dimension.
         if self.hasz:
-            substr = "%s,%s,%s "
+            coords = [f"{coord[0]},{coord[1]},{coord[2]}" for coord in self]
         else:
-            substr = "%s,%s,0 "
-        return (
-            "<coordinates>%s</coordinates>"
-            % "".join(substr % self[i] for i in range(len(self))).strip()
-        )
+            coords = [f"{coord[0]},{coord[1]},0" for coord in self]
+
+        coordinate_string = " ".join(coords)
+        return f"<coordinates>{coordinate_string}</coordinates>"
 
     @property
     def tuple(self):
         "Return a tuple version of this coordinate sequence."
         n = self.size
-        get_point = self._point_getter
         if n == 1:
-            return get_point(0)
-        return tuple(get_point(i) for i in range(n))
+            return self._get_point(0)
+        return tuple(self._get_point(i) for i in range(n))
 
     @property
     def is_counterclockwise(self):
