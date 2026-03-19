@@ -276,6 +276,8 @@ class UniqueConstraint(BaseConstraint):
     ):
         if not name:
             raise ValueError("A unique constraint must be named.")
+        if not isinstance(fields, (list, tuple)):
+            raise ValueError("UniqueConstraint.fields must be a list or tuple.")
         if not expressions and not fields:
             raise ValueError(
                 "At least one field or expression is required to define a "
@@ -314,6 +316,10 @@ class UniqueConstraint(BaseConstraint):
             raise ValueError(
                 "UniqueConstraint.fields and UniqueConstraint.opclasses must "
                 "have the same number of elements."
+            )
+        if fields and not all(isinstance(field, str) for field in fields):
+            raise ValueError(
+                "UniqueConstraint.fields must contain only strings with field names."
             )
         self.fields = tuple(fields)
         self.condition = condition

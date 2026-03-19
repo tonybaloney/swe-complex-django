@@ -1442,6 +1442,16 @@ class UniqueConstraintTests(TestCase):
         with self.assertRaisesMessage(ValueError, msg):
             models.UniqueConstraint(name="name")
 
+    def test_fields_type(self):
+        msg = "UniqueConstraint.fields must be a list or tuple."
+        with self.assertRaisesMessage(ValueError, msg):
+            models.UniqueConstraint(name="name", fields="field")
+
+    def test_fields_strings(self):
+        msg = "UniqueConstraint.fields must contain only strings with field names."
+        with self.assertRaisesMessage(ValueError, msg):
+            models.UniqueConstraint(name="name", fields=[F("field")])
+
     def test_expressions_and_fields_mutually_exclusive(self):
         msg = "UniqueConstraint.fields and expressions are mutually exclusive."
         with self.assertRaisesMessage(ValueError, msg):
