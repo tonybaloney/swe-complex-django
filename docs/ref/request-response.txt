@@ -248,6 +248,14 @@ application.
     This will be used instead of :setting:`DEFAULT_EXCEPTION_REPORTER` for the
     current request. See :ref:`custom-error-reports` for details.
 
+.. attribute:: HttpRequest.multipart_parser_class
+
+    .. versionadded:: 6.1
+
+    The class used to parse ``multipart/form-data`` request bodies. By default,
+    this is :class:`django.http.multipartparser.MultiPartParser`. You can set
+    this on a per-request basis to use a custom parser class.
+
 Attributes set by middleware
 ----------------------------
 

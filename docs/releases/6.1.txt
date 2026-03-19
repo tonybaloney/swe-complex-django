@@ -295,7 +295,9 @@ Pagination
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
-* ...
+* The :attr:`~django.http.HttpRequest.multipart_parser_class` attribute was
+  added to :class:`~django.http.HttpRequest` to allow customizing the multipart
+  parser class used for parsing ``multipart/form-data`` request bodies.
 
 Security
 ~~~~~~~~
