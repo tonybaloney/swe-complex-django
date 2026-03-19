@@ -49,6 +49,10 @@ def log_task_started(sender, task_result, **kwargs):
 
 @receiver(task_finished)
 def log_task_finished(sender, task_result, **kwargs):
+    log_kwargs = {}
+    if task_result.status == TaskResultStatus.FAILED:
+        # Signal is sent inside exception handlers, so exc_info() is available.
+        log_kwargs["exc_info"] = sys.exc_info()
     logger.log(
         (
             logging.ERROR
@@ -59,6 +63,5 @@ def log_task_finished(sender, task_result, **kwargs):
         task_result.id,
         task_result.task.module_path,
         task_result.status,
-        # Signal is sent inside exception handlers, so exc_info() is available.
-        exc_info=sys.exc_info(),
+        **log_kwargs,
     )
