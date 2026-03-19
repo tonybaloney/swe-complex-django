@@ -291,6 +291,27 @@ class TestHashedFiles:
             self.assertIn(source_map_data_uri, content)
         self.assertPostCondition()
 
+    def test_commented_urls_ignored(self):
+        relpath = self.hashed_file_path("cached/comments.css")
+        self.assertEqual(relpath, "cached/comments.e6f037d33937.css")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            self.assertIn(b'url("img/window.acae32e4532b.png")', content)
+            self.assertIn(b'/* url("img/window.acae32e4532b.png") */', content)
+            self.assertIn(
+                b"/*# sourceMappingURL=source_map.css.99914b932bd3.map */", content
+            )
+        relpath = self.hashed_file_path("cached/comments.js")
+        self.assertEqual(relpath, "cached/comments.86e8e2ba841d.js")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            self.assertIn(b'import("./module.99914b932bd3.js")', content)
+            self.assertIn(b'// import("./module.js")', content)
+            self.assertIn(b'/* import("./module.js") */', content)
+            self.assertIn(b'// # sourceMappingURL=source_map.js.map', content)
+            self.assertNotIn(b'// import("./module.99914b932bd3.js")', content)
+        self.assertPostCondition()
+
     def test_js_source_map(self):
         relpath = self.hashed_file_path("cached/source_map.js")
         self.assertEqual(relpath, "cached/source_map.cd45b8534a87.js")

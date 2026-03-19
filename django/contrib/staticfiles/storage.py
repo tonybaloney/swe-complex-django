@@ -48,6 +48,7 @@ class HashedFilesMixin:
     default_template = """url("%(url)s")"""
     max_post_process_passes = 5
     support_js_module_import_aggregation = False
+    _js_comments_re = re.compile(r"//(?!#).*$|/\*.*?\*/", re.MULTILINE | re.DOTALL)
     _js_module_import_aggregation_patterns = (
         "*.js",
         (
@@ -272,6 +273,28 @@ class HashedFilesMixin:
 
         return converter
 
+    def _replace_patterns(self, path, content, patterns, converter):
+        comment_re = None
+        if matches_patterns(path, ("*.js",)):
+            comment_re = self._js_comments_re
+        if comment_re is None:
+            for pattern, template in patterns:
+                content = pattern.sub(converter(template), content)
+            return content
+
+        comments = []
+
+        def save_comment(match):
+            comments.append(match.group(0))
+            return "__COMMENT_{}__".format(len(comments) - 1)
+
+        content = comment_re.sub(save_comment, content)
+        for pattern, template in patterns:
+            content = pattern.sub(converter(template), content)
+        for i, comment in enumerate(comments):
+            content = content.replace("__COMMENT_{}__".format(i), comment)
+        return content
+
     def post_process(self, paths, dry_run=False, **options):
         """
         Post process the given dictionary of files (called from collectstatic).
@@ -373,14 +396,17 @@ class HashedFilesMixin:
                         yield name, None, exc, False
                     for extension, patterns in self._patterns.items():
                         if matches_patterns(path, (extension,)):
-                            for pattern, template in patterns:
-                                converter = self.url_converter(
-                                    name, hashed_files, template
+                            try:
+                                content = self._replace_patterns(
+                                    path,
+                                    content,
+                                    patterns,
+                                    lambda template: self.url_converter(
+                                        name, hashed_files, template
+                                    ),
                                 )
-                                try:
-                                    content = pattern.sub(converter, content)
-                                except ValueError as exc:
-                                    yield name, None, exc, False
+                            except ValueError as exc:
+                                yield name, None, exc, False
                     if hashed_file_exists:
                         self.delete(hashed_name)
                     # then save the processed result
