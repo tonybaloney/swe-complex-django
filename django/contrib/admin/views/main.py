@@ -63,6 +63,7 @@ class ChangeListSearchForm(forms.Form):
 
 
 class ChangeList:
+    formset = None
     search_form_class = ChangeListSearchForm
 
     def __init__(

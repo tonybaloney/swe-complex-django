@@ -4987,6 +4987,10 @@ class TestCustomChangeList(TestCase):
         response = self.client.get(reverse("admin:admin_views_gadget_changelist"))
         self.assertNotContains(response, "First Gadget")
 
+    def test_custom_changelist_formset_defaults_to_none(self):
+        response = self.client.get(reverse("admin:admin_views_gadget_changelist"))
+        self.assertIsNone(response.context["cl"].formset)
+
 
 @override_settings(ROOT_URLCONF="admin_views.urls")
 class TestInlineNotEditable(TestCase):
