@@ -310,6 +310,11 @@ class SkipTestClass:
         pass
 
 
+class SkipTestMethod:
+    def skip_test_method(self):
+        pass
+
+
 def skip_test_function():
     pass
 
@@ -332,6 +337,9 @@ class TestMarkTests(SimpleTestCase):
             "skip test function": {
                 "backends.base.test_creation.skip_test_function",
             },
+            "skip test method": {
+                "backends.base.test_creation.SkipTestMethod.skip_test_method",
+            },
         }
         creation.mark_expected_failures_and_skips()
         self.assertIs(
@@ -347,4 +355,9 @@ class TestMarkTests(SimpleTestCase):
         self.assertEqual(
             skip_test_function.__unittest_skip_why__,
             "skip test function",
+        )
+        self.assertIs(SkipTestMethod.skip_test_method.__unittest_skip__, True)
+        self.assertEqual(
+            SkipTestMethod.skip_test_method.__unittest_skip_why__,
+            "skip test method",
         )
