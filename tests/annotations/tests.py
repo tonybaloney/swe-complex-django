@@ -1509,6 +1509,21 @@ class AliasTests(TestCase):
                 with self.assertRaisesMessage(FieldError, msg):
                     getattr(qs, operation)("rating_alias")
 
+    def test_values_annotation_after_values(self):
+        for queryset, method in [
+            (Book.objects.annotate(annotation=Value(1)).values("isbn"), "values"),
+            (
+                Book.objects.annotate(annotation=Value(1)).values_list("isbn"),
+                "values_list",
+            ),
+        ]:
+            with self.subTest(method=method):
+                with self.assertRaisesMessage(
+                    FieldError,
+                    "Cannot resolve keyword 'annotation_typo' into field.",
+                ):
+                    getattr(queryset, method)("annotation_typo")
+
     def test_alias_after_values(self):
         qs = Book.objects.values_list("pk").alias(other_pk=F("pk"))
         self.assertEqual(qs.get(pk=self.b1.pk), (self.b1.pk,))
