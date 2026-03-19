@@ -516,6 +516,10 @@ class GeometryWidgetTests(SimpleTestCase):
             ],
         )
 
+    def test_deserialize_invalid_wkt(self):
+        widget = BaseGeometryWidget()
+        self.assertIsNone(widget.deserialize("POINT(1)"))
+
     def test_custom_serialization_widget(self):
         class CustomGeometryWidget(forms.BaseGeometryWidget):
             template_name = "gis/openlayers.html"
