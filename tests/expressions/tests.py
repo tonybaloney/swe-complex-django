@@ -1646,6 +1646,14 @@ class ExpressionsNumericTests(TestCase):
         ).filter(Q(x=1, integer=0) & Q(x=Decimal("1")))
         self.assertSequenceEqual(qs, [obj])
 
+    def test_decimal_division_literal_value(self):
+        Number.objects.create(integer=1, float=1.0, decimal_value=Decimal("1"))
+        qs = Number.objects.annotate(
+            result=Value(Decimal("10")) / Value(Decimal("3")),
+        )
+        result = qs.first().result
+        self.assertAlmostEqual(result, Decimal("10") / Decimal("3"), places=5)
+
     def test_complex_expressions(self):
         """
         Complex expressions of different connection types are possible.
