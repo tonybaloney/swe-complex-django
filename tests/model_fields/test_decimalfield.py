@@ -101,6 +101,16 @@ class DecimalFieldTests(TestCase):
         big_decimal.refresh_from_db()
         self.assertEqual(big_decimal.d, Decimal(".100000000000000000000000000005"))
 
+    def test_sqlite_integer_precision_bypass(self):
+        if connection.vendor != "sqlite":
+            self.skipTest("SQLite-specific test")
+        expression = BigD._meta.get_field("d").get_col(BigD._meta.db_table)
+        converter = connection.ops.get_decimalfield_converter(expression)
+        self.assertEqual(
+            converter(9999999999999999, expression, connection),
+            Decimal("9999999999999999"),
+        )
+
     def test_lookup_really_big_value(self):
         """
         Really big values can be used in a filter statement.
