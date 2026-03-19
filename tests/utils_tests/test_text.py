@@ -1,6 +1,5 @@
 import json
 import sys
-from unittest.mock import patch
 
 from django.core.exceptions import SuspiciousFileOperation
 from django.test import SimpleTestCase
@@ -136,10 +135,9 @@ class TestUtilsText(SimpleTestCase):
         truncator = text.Truncator("foo</p>")
         self.assertEqual("foo</p>", truncator.chars(5, html=True))
 
-    @patch("django.utils.text.Truncator.MAX_LENGTH_HTML", 10_000)
     def test_truncate_chars_html_size_limit(self):
-        max_len = text.Truncator.MAX_LENGTH_HTML
-        bigger_len = text.Truncator.MAX_LENGTH_HTML + 1
+        max_len = 10_000
+        bigger_len = 10_001
         valid_html = "<p>Joel is a slug</p>"  # 14 chars
         perf_test_values = [
             ("</a" + "\t" * (max_len - 6) + "//>", "</a>"),
@@ -329,10 +327,9 @@ class TestUtilsText(SimpleTestCase):
         self.assertEqual(truncator.words(3, html=True), "hello &gt;&lt;…")
         self.assertEqual(truncator.words(4, html=True), "hello &gt;&lt; world")
 
-    @patch("django.utils.text.Truncator.MAX_LENGTH_HTML", 10_000)
     def test_truncate_words_html_size_limit(self):
-        max_len = text.Truncator.MAX_LENGTH_HTML
-        bigger_len = text.Truncator.MAX_LENGTH_HTML + 1
+        max_len = 10_000
+        bigger_len = 10_001
         valid_html = "<p>Joel is a slug</p>"  # 4 words
         perf_test_values = [
             ("</a" + "\t" * (max_len - 6) + "//>", "</a>"),
