@@ -243,7 +243,10 @@ class BaseModelAdminChecks:
                         'An admin for model "%s" has to be registered '
                         "to be referenced by %s.autocomplete_fields."
                         % (
-                            field.remote_field.model.__name__,
+                            getattr(
+                                field.remote_field.model, "__name__",
+                                field.remote_field.model,
+                            ),
                             type(obj).__name__,
                         ),
                         obj=obj.__class__,

@@ -1724,6 +1724,28 @@ class AutocompleteFieldsTests(CheckTestCase):
             invalid_obj=Admin,
         )
 
+    @isolate_apps("modeladmin")
+    def test_autocomplete_e039_string_model(self):
+        class TestModel(Model):
+            band = ForeignKey("modeladmin.NonExistent", CASCADE)
+
+            class Meta:
+                app_label = "modeladmin"
+
+        class Admin(ModelAdmin):
+            autocomplete_fields = ("band",)
+
+        self.assertIsInvalid(
+            Admin,
+            TestModel,
+            msg=(
+                'An admin for model "modeladmin.NonExistent" has to be '
+                "registered to be referenced by Admin.autocomplete_fields."
+            ),
+            id="admin.E039",
+            invalid_obj=Admin,
+        )
+
     def test_autocomplete_e040(self):
         class NoSearchFieldsAdmin(ModelAdmin):
             pass
