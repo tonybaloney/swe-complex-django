@@ -1575,6 +1575,32 @@ class StateRelationsTests(SimpleTestCase):
             [("tests", "comment"), ("tests", "post")],
         )
 
+    def test_rename_field_together_options(self):
+        project_state = ProjectState()
+        project_state.add_model(
+            ModelState(
+                "tests",
+                "Model",
+                [
+                    ("id", models.AutoField(primary_key=True)),
+                    ("field_a", models.IntegerField()),
+                    ("field_b", models.IntegerField()),
+                ],
+                options={
+                    "unique_together": {("field_a", "field_b")},
+                    "index_together": {("field_a", "field_b")},
+                },
+            )
+        )
+        project_state.rename_field("tests", "model", "field_a", "field_c")
+        model_state = project_state.models["tests", "model"]
+        self.assertEqual(
+            model_state.options["unique_together"], {("field_c", "field_b")}
+        )
+        self.assertEqual(
+            model_state.options["index_together"], {("field_c", "field_b")}
+        )
+
     def test_alter_field(self):
         project_state = self.get_base_project_state()
         self.assertEqual(
@@ -1715,6 +1741,28 @@ class ModelStateTests(SimpleTestCase):
         )
         with self.assertRaisesMessage(ValueError, msg):
             ModelState("app", "Model", [("field", field)], options=options)
+
+    def test_together_normalization(self):
+        """
+        *_together options are normalized to sets of tuples in ModelState.
+        """
+        field = models.IntegerField()
+        # Lists of lists are normalized to sets of tuples.
+        state = ModelState(
+            "app",
+            "Model",
+            [("field_a", field), ("field_b", field)],
+            options={
+                "unique_together": [["field_a", "field_b"]],
+                "index_together": [["field_a", "field_b"]],
+            },
+        )
+        self.assertEqual(
+            state.options["unique_together"], {("field_a", "field_b")}
+        )
+        self.assertEqual(
+            state.options["index_together"], {("field_a", "field_b")}
+        )
 
     def test_fields_immutability(self):
         """
