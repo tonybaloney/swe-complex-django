@@ -2,6 +2,7 @@ import json
 import time
 import unittest
 
+from django.core.exceptions import SuspiciousOperation
 from django.core.serializers.base import DeserializationError, DeserializedObject
 from django.core.serializers.json import Deserializer as JsonDeserializer
 from django.core.serializers.jsonl import Deserializer as JsonlDeserializer
@@ -138,6 +139,20 @@ class TestDeserializer(SimpleTestCase):
         self.assertEqual(first_item.object, self.jane)
         self.assertEqual(second_item.object, self.joe)
 
+    def test_xml_unexpected_nested_tags_are_rejected(self):
+        """Unexpected nested tags in XML fixtures raise SuspiciousOperation."""
+        crafted_xml = """
+            <django-objects version="1.0">
+               <object model="contenttypes.contenttype" pk="1">
+                  <field name="app_label"><nested>bad</nested></field>
+                  <field name="model">m</field>
+               </object>
+            </django-objects>
+        """
+        msg = "Unexpected element: 'nested'"
+        with self.assertRaisesMessage(SuspiciousOperation, msg):
+            next(XMLDeserializer(crafted_xml))
+
     def test_crafted_xml_performance(self):
         """The time to process invalid inputs is not quadratic."""
 
@@ -160,11 +175,13 @@ class TestDeserializer(SimpleTestCase):
             garbage_collect()
 
             start_time = time.perf_counter()
-            result = list(iterator)
+            with self.assertRaisesMessage(
+                SuspiciousOperation,
+                "Unexpected element: 'nested'",
+            ):
+                list(iterator)
             end_time = time.perf_counter()
 
-            self.assertEqual(len(result), 1)
-            self.assertIsInstance(result[0].object, models.Model)
             return end_time - start_time
 
         def assertFactor(label, params, factor=2):
