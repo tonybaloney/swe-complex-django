@@ -381,11 +381,11 @@ backends.
 * If the database supports ``UPDATE … RETURNING`` statements, backends can set
   ``DatabaseFeatures.can_return_rows_from_update=True``.
 
-Dropped support for MariaDB 10.5
---------------------------------
+Dropped support for MariaDB 10.10
+---------------------------------
 
-Upstream support for MariaDB 10.5 ends in June 2025. Django 6.0 supports
-MariaDB 10.6 and higher.
+Upstream support for MariaDB 10.10 ends in June 2029. Django 6.0 supports
+MariaDB 10.11 and higher.
 
 Dropped support for Python < 3.12
 ---------------------------------
