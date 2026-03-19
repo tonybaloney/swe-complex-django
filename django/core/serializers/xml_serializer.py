@@ -10,7 +10,7 @@ from xml.sax.expatreader import ExpatParser as _ExpatParser
 
 from django.apps import apps
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, SuspiciousOperation
 from django.core.serializers import base
 from django.db import DEFAULT_DB_ALIAS, models
 from django.utils.xmlutils import SimplerXMLGenerator, UnserializableContentError
@@ -443,6 +443,14 @@ def getInnerText(node):
     """Get the inner text of a DOM node and any children one level deep."""
     # inspired by
     # https://mail.python.org/pipermail/xml-sig/2005-March/011022.html
+    for child in node.childNodes:
+        if child.nodeType == child.ELEMENT_NODE:
+            for grandchild in child.childNodes:
+                if grandchild.nodeType == grandchild.ELEMENT_NODE:
+                    raise SuspiciousOperation(
+                        "Unexpected nested tag '<%s>' in XML deserializer input."
+                        % grandchild.nodeName
+                    )
     return "".join(
         [
             element.data
