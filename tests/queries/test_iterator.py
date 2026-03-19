@@ -1,7 +1,7 @@
 import datetime
 from unittest import mock
 
-from django.db import connections
+from django.db import DatabaseError, connections
 from django.db.models.sql.compiler import cursor_iter
 from django.test import TestCase
 
@@ -56,3 +56,20 @@ class QuerySetIteratorTests(TestCase):
         with mock.patch.object(features, "can_use_chunked_reads", False):
             result = compiler.execute_sql(chunked_fetch=True)
         self.assertIsInstance(result, list)
+
+    def test_close_error_does_not_mask_execute_error(self):
+        """
+        DatabaseError raised by cursor.close() should not mask the original
+        exception from cursor.execute(). Regression test for #29257.
+        """
+        qs = Article.objects.all()
+        compiler = qs.query.get_compiler(using=qs.db)
+        original_error = DatabaseError("original execute error")
+        close_error = DatabaseError("cursor does not exist")
+        mock_cursor = mock.MagicMock()
+        mock_cursor.execute.side_effect = original_error
+        mock_cursor.close.side_effect = close_error
+        with mock.patch.object(compiler.connection, "cursor", return_value=mock_cursor):
+            with self.assertRaises(DatabaseError) as cm:
+                compiler.execute_sql()
+        self.assertEqual(str(cm.exception), "original execute error")

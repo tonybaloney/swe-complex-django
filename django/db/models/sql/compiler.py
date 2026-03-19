@@ -1631,7 +1631,10 @@ class SQLCompiler:
             cursor.execute(sql, params)
         except Exception:
             # Might fail for server-side cursors (e.g. connection closed)
-            cursor.close()
+            try:
+                cursor.close()
+            except DatabaseError:
+                pass
             raise
 
         if result_type == ROW_COUNT:
