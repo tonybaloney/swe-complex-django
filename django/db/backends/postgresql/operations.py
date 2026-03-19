@@ -1,5 +1,6 @@
 import json
 from functools import lru_cache, partial
+from itertools import chain
 
 from django.conf import settings
 from django.db.backends.base.operations import BaseDatabaseOperations
@@ -13,6 +14,7 @@ from django.db.backends.postgresql.psycopg_any import (
 )
 from django.db.backends.utils import split_tzname_delta
 from django.db.models.constants import OnConflict
+from django.db.models.fields.composite import CompositePrimaryKey
 from django.db.models.functions import Cast
 from django.utils.regex_helper import _lazy_re_compile
 
@@ -154,6 +156,19 @@ class DatabaseOperations(BaseDatabaseOperations):
         if isinstance(placeholder_rows, InsertUnnest):
             return f"SELECT * FROM {placeholder_rows}"
         return super().bulk_insert_sql(fields, placeholder_rows)
+
+    def bulk_batch_size(self, fields, objs):
+        if self.connection.features.max_query_params is None:
+            return len(objs)
+        fields = list(
+            chain.from_iterable(
+                field.fields if isinstance(field, CompositePrimaryKey) else [field]
+                for field in fields
+            )
+        )
+        if fields:
+            return self.connection.features.max_query_params // len(fields)
+        return len(objs)
 
     def lookup_cast(self, lookup_type, internal_type=None):
         lookup = "%s"
