@@ -434,6 +434,29 @@ class TestCheckErrors(SimpleTestCase):
                 autoreload._exception = None
         self.assertEqual(mocked_error_files.append.call_count, 1)
 
+    def test_chains_url_module_exception(self):
+        url_error = ValueError("original URLconf error")
+        fake_method = mock.MagicMock(side_effect=RuntimeError("subsequent error"))
+        wrapped = autoreload.check_errors(fake_method)
+        with mock.patch.object(autoreload, "_url_module_exception", url_error):
+            try:
+                with self.assertRaises(RuntimeError) as cm:
+                    wrapped()
+                self.assertIs(cm.exception.__cause__, url_error)
+            finally:
+                autoreload._exception = None
+
+    def test_no_chain_without_url_module_exception(self):
+        fake_method = mock.MagicMock(side_effect=RuntimeError("some error"))
+        wrapped = autoreload.check_errors(fake_method)
+        with mock.patch.object(autoreload, "_url_module_exception", None):
+            try:
+                with self.assertRaises(RuntimeError) as cm:
+                    wrapped()
+                self.assertIsNone(cm.exception.__cause__)
+            finally:
+                autoreload._exception = None
+
 
 class TestRaiseLastException(SimpleTestCase):
     @mock.patch("django.utils.autoreload._exception", None)
@@ -772,6 +795,22 @@ class BaseReloaderTests(ReloaderTests):
         thread = mock.MagicMock()
         thread.is_alive.return_value = True
         self.assertTrue(self.reloader.wait_for_apps_ready(app_reg, thread))
+
+    @mock.patch("django.utils.autoreload.BaseReloader.run_loop")
+    @mock.patch("django.utils.autoreload.apps")
+    def test_run_stores_urlconf_error(self, mocked_apps, mocked_run_loop):
+        mocked_apps.ready_event = threading.Event()
+        mocked_apps.ready_event.set()
+        thread = mock.MagicMock()
+        thread.is_alive.return_value = True
+        error = Exception("URLconf error")
+        with mock.patch(
+            "django.urls.get_resolver",
+            side_effect=error,
+        ):
+            self.reloader.run(thread)
+        self.assertIs(autoreload._url_module_exception, error)
+        autoreload._url_module_exception = None
 
 
 def skip_unless_watchman_available():
