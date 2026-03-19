@@ -65,6 +65,11 @@ class TestRegistration(SimpleTestCase):
         with self.assertRaisesMessage(NotRegistered, msg):
             self.site.get_model_admin(Person)
 
+    def test_get_model_admin_non_model_input(self):
+        msg = "The model admin_registration.Person is not registered."
+        with self.assertRaisesMessage(NotRegistered, msg):
+            self.site.get_model_admin("admin_registration.Person")
+
     def test_star_star_overrides(self):
         self.site.register(
             Person, NameAdmin, search_fields=["name"], list_display=["__str__"]
