@@ -572,12 +572,14 @@ class AggregateTestCase(TestCase):
                 )
                 self.assertEqual(books["ratings"], expected_result)
 
-    @skipUnlessDBFeature("supports_aggregate_distinct_multiple_argument")
     def test_distinct_on_stringagg(self):
         books = Book.objects.aggregate(
             ratings=StringAgg(Cast(F("rating"), CharField()), Value(","), distinct=True)
         )
-        self.assertCountEqual(books["ratings"].split(","), ["3", "4", "4.5", "5"])
+        self.assertCountEqual(
+            [float(v) for v in books["ratings"].split(",")],
+            [3, 4, 4.5, 5],
+        )
 
     @skipIfDBFeature("supports_aggregate_distinct_multiple_argument")
     def test_raises_error_on_multiple_argument_distinct(self):
@@ -589,7 +591,7 @@ class AggregateTestCase(TestCase):
             Book.objects.aggregate(
                 ratings=StringAgg(
                     Cast(F("rating"), CharField()),
-                    Value(","),
+                    Value(";"),
                     distinct=True,
                 )
             )

@@ -369,6 +369,23 @@ class StringAgg(Aggregate):
         return sql, (*params, *delimiter_params)
 
     def as_sqlite(self, compiler, connection, **extra_context):
+        # SQLite doesn't support DISTINCT on aggregates with multiple
+        # arguments. When the delimiter is the default comma, omit it from
+        # the compiled arguments so GROUP_CONCAT(DISTINCT col) is used,
+        # which implicitly uses a comma delimiter.
+        if self.distinct and getattr(self.delimiter.value, "value", None) == ",":
+            clone = self.copy()
+            source_expressions = clone.get_source_expressions()
+            clone.set_source_expressions(
+                source_expressions[:1] + source_expressions[2:]
+            )
+            return clone.as_sql(
+                compiler,
+                connection,
+                function="GROUP_CONCAT",
+                **extra_context,
+            )
+
         if connection.get_database_version() < (3, 44):
             return self.as_sql(
                 compiler,
