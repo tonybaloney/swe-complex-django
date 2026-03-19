@@ -149,6 +149,14 @@ class ModelIterable(BaseIterable):
                 # Avoid overwriting objects loaded by, e.g., select_related().
                 if field.is_cached(obj):
                     continue
+                field_names = tuple(
+                    field.attname
+                    if from_field == "self"
+                    else queryset.model._meta.get_field(from_field).attname
+                    for from_field in field.from_fields
+                )
+                if any(field_name not in obj.__dict__ for field_name in field_names):
+                    continue
                 rel_obj_id = rel_getter(obj)
                 try:
                     rel_obj = rel_objs[rel_obj_id]
