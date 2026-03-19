@@ -299,7 +299,7 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             )
 
     def test_invalid_index_type(self):
-        msg = "Exclusion constraints only support GiST or SP-GiST indexes."
+        msg = "Exclusion constraints only support GiST, SP-GiST, and Hash indexes."
         with self.assertRaisesMessage(ValueError, msg):
             ExclusionConstraint(
                 index_type="gin",
@@ -1244,6 +1244,65 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
         with connection.schema_editor() as editor:
             editor.add_constraint(RangesModel, constraint)
         self.assertIn(constraint_name, self.get_constraints(RangesModel._meta.db_table))
+
+    def test_hash_equal(self):
+        constraint_name = "number_equal_hash"
+        self.assertNotIn(constraint_name, self.get_constraints(Room._meta.db_table))
+        constraint = ExclusionConstraint(
+            name=constraint_name,
+            expressions=[("number", RangeOperators.EQUAL)],
+            index_type="hash",
+        )
+        with connection.schema_editor() as editor:
+            editor.add_constraint(Room, constraint)
+        self.assertIn(constraint_name, self.get_constraints(Room._meta.db_table))
+        Room.objects.create(number=101)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Room.objects.create(number=101)
+        Room.objects.create(number=102)
+        # Drop the constraint.
+        with connection.schema_editor() as editor:
+            editor.remove_constraint(Room, constraint)
+        self.assertNotIn(constraint_name, self.get_constraints(Room._meta.db_table))
+
+    def test_hash_equal_validate(self):
+        constraint = ExclusionConstraint(
+            name="number_equal_hash_validate",
+            expressions=[("number", RangeOperators.EQUAL)],
+            index_type="hash",
+            violation_error_message="Number already exists.",
+        )
+        Room.objects.create(number=101)
+        msg = "Number already exists."
+        with self.assertRaisesMessage(ValidationError, msg):
+            constraint.validate(Room, Room(number=101))
+        constraint.validate(Room, Room(number=102))
+
+    def test_deconstruct_hash_index_type(self):
+        constraint = ExclusionConstraint(
+            name="exclude_overlapping",
+            index_type="HASH",
+            expressions=[
+                ("datespan", RangeOperators.OVERLAPS),
+                ("room", RangeOperators.EQUAL),
+            ],
+        )
+        path, args, kwargs = constraint.deconstruct()
+        self.assertEqual(
+            path, "django.contrib.postgres.constraints.ExclusionConstraint"
+        )
+        self.assertEqual(args, ())
+        self.assertEqual(
+            kwargs,
+            {
+                "name": "exclude_overlapping",
+                "index_type": "HASH",
+                "expressions": [
+                    ("datespan", RangeOperators.OVERLAPS),
+                    ("room", RangeOperators.EQUAL),
+                ],
+            },
+        )
 
     def test_range_equal_cast(self):
         constraint_name = "exclusion_equal_room_cast"
