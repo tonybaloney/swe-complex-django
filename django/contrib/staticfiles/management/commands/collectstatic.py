@@ -154,6 +154,20 @@ class Command(BaseCommand):
                     # Add a blank line before the traceback, otherwise it's
                     # too easy to miss the relevant part of the error message.
                     self.stderr.write()
+                    if (
+                        isinstance(processed, ValueError)
+                        and processed_path is None
+                        and processed.args
+                        and processed.args[0].startswith("The file '")
+                    ):
+                        raise CommandError(
+                            "The file '%(missing)s' referenced in '%(original)s' could "
+                            "not be found."
+                            % {
+                                "missing": processed.args[0].split("'")[1],
+                                "original": original_path,
+                            }
+                        ) from processed
                     raise processed
                 if processed:
                     self.log(
