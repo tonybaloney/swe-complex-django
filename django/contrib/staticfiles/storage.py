@@ -48,30 +48,37 @@ class HashedFilesMixin:
     default_template = """url("%(url)s")"""
     max_post_process_passes = 5
     support_js_module_import_aggregation = False
+    # Comments that should be skipped during URL substitution.
+    _block_comment_re = r"(?s:/\*.*?\*/)"
+    _js_comment_re = _block_comment_re + r"|//[^\n]*"
     _js_module_import_aggregation_patterns = (
         "*.js",
         (
             (
                 (
-                    r"""(?P<matched>import"""
-                    r"""(?s:(?P<import>[\s\{].*?|\*\s*as\s*\w+))"""
-                    r"""\s*from\s*['"](?P<url>[./].*?)["']\s*;)"""
+                    _js_comment_re
+                    + r"""|(?P<matched>import"""
+                    + r"""(?s:(?P<import>[\s\{].*?|\*\s*as\s*\w+))"""
+                    + r"""\s*from\s*['"](?P<url>[./].*?)["']\s*;)"""
                 ),
                 """import%(import)s from "%(url)s";""",
             ),
             (
                 (
-                    r"""(?P<matched>export(?s:(?P<exports>[\s\{].*?))"""
-                    r"""\s*from\s*["'](?P<url>[./].*?)["']\s*;)"""
+                    _js_comment_re
+                    + r"""|(?P<matched>export(?s:(?P<exports>[\s\{].*?))"""
+                    + r"""\s*from\s*["'](?P<url>[./].*?)["']\s*;)"""
                 ),
                 """export%(exports)s from "%(url)s";""",
             ),
             (
-                r"""(?P<matched>import\s*['"](?P<url>[./].*?)["']\s*;)""",
+                _js_comment_re
+                + r"""|(?P<matched>import\s*['"](?P<url>[./].*?)["']\s*;)""",
                 """import"%(url)s";""",
             ),
             (
-                r"""(?P<matched>import\(["'](?P<url>.*?)["']\))""",
+                _js_comment_re
+                + r"""|(?P<matched>import\(["'](?P<url>.*?)["']\))""",
                 """import("%(url)s")""",
             ),
         ),
@@ -80,10 +87,12 @@ class HashedFilesMixin:
         (
             "*.css",
             (
-                r"""(?P<matched>url\((?P<quote>['"]{0,1})"""
-                r"""\s*(?P<url>.*?)(?P=quote)\))""",
+                _block_comment_re
+                + r"""|(?P<matched>url\((?P<quote>['"]{0,1})"""
+                + r"""\s*(?P<url>.*?)(?P=quote)\))""",
                 (
-                    r"""(?P<matched>@import\s*["']\s*(?P<url>.*?)["'])""",
+                    _block_comment_re
+                    + r"""|(?P<matched>@import\s*["']\s*(?P<url>.*?)["'])""",
                     """@import url("%(url)s")""",
                 ),
                 (
@@ -220,6 +229,11 @@ class HashedFilesMixin:
             """
             matches = matchobj.groupdict()
             matched = matches["matched"]
+
+            # If this match is a comment (no URL group), return it unchanged.
+            if matched is None:
+                return matchobj.group(0)
+
             url = matches["url"]
 
             # Ignore absolute/protocol-relative and data-uri URLs.

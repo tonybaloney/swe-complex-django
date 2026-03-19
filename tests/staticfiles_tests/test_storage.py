@@ -77,6 +77,19 @@ class TestHashedFiles:
             self.assertIn(b"url()", content)
         self.assertPostCondition()
 
+    def test_urls_in_comments_ignored(self):
+        relpath = self.hashed_file_path("cached/css/commented.css")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # URLs inside block comments should be left unchanged.
+            self.assertIn(b'/* url("../styles.css") should be ignored */', content)
+            self.assertIn(b'@import "../styles.css";', content)
+            self.assertIn(b'   url("../styles.css")', content)
+            # The URL outside the comment should be replaced.
+            self.assertNotIn(b'url("../styles.css")\n', content)
+            self.assertIn(b"styles.5e0040571e1a.css", content)
+        self.assertPostCondition()
+
     def test_path_with_querystring(self):
         relpath = self.hashed_file_path("cached/styles.css?spam=eggs")
         self.assertEqual(relpath, "cached/styles.5e0040571e1a.css?spam=eggs")
@@ -744,6 +757,27 @@ class TestCollectionJSModuleImportAggregationManifestStorage(CollectionTestCase)
             for module_import in tests:
                 with self.subTest(module_import=module_import):
                     self.assertIn(module_import, content)
+
+    def test_imports_in_comments_ignored(self):
+        relpath = self.hashed_file_path("cached/module_commented.js")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # Imports inside line and block comments should be left unchanged.
+            self.assertIn(
+                b'// import testConst from "./module_test.js";', content
+            )
+            self.assertIn(
+                b'/* import testConst from "./module_test.js"; */', content
+            )
+            self.assertIn(
+                b'import { firstConst, secondConst } from "./module_test.js";',
+                content,
+            )
+            self.assertIn(
+                b'export * from "./module_test.js";', content
+            )
+            # The import outside comments should be replaced.
+            self.assertIn(b"module_test.477bbebe77f0.js", content)
 
 
 class CustomManifestStorage(storage.ManifestStaticFilesStorage):
