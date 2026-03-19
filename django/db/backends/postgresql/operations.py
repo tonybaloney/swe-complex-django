@@ -288,6 +288,11 @@ class DatabaseOperations(BaseDatabaseOperations):
         """
         return 63
 
+    def bulk_batch_size(self, fields, objs):
+        if fields and self.connection.features.max_query_params:
+            return self.connection.features.max_query_params // len(fields)
+        return len(objs)
+
     def distinct_sql(self, fields, params):
         if fields:
             params = [param for param_list in params for param in param_list]

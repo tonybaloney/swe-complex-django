@@ -82,6 +82,12 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_uuid4_function = True
 
     @cached_property
+    def max_query_params(self):
+        if self.uses_server_side_binding:
+            return 2**16 - 1
+        return None
+
+    @cached_property
     def supports_uuid7_function(self):
         return self.is_postgresql_18
 

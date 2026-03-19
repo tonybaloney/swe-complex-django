@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from django.core.management.color import no_style
 from django.db import connection
@@ -7,6 +8,7 @@ from django.db.models.functions import Cast
 from django.test import SimpleTestCase
 
 from ..models import Author, Book, Person, Tag
+from .tests import no_pool_connection
 
 
 @unittest.skipUnless(connection.vendor == "postgresql", "PostgreSQL tests.")
@@ -50,6 +52,40 @@ class PostgreSQLOperationsTests(SimpleTestCase):
             ),
             ['TRUNCATE "backends_person", "backends_tag" RESTART IDENTITY CASCADE;'],
         )
+
+    def test_bulk_batch_size(self):
+        objects = range(2**16)
+        self.assertEqual(connection.ops.bulk_batch_size([], objects), len(objects))
+
+        first_name_field = Person._meta.get_field("first_name")
+        last_name_field = Person._meta.get_field("last_name")
+        self.assertEqual(connection.ops.bulk_batch_size([first_name_field], objects), len(objects))
+        self.assertEqual(
+            connection.ops.bulk_batch_size([first_name_field, last_name_field], objects),
+            len(objects),
+        )
+
+    def test_bulk_batch_size_respects_server_side_binding_limit(self):
+        objects = range(2**16)
+        first_name_field = Person._meta.get_field("first_name")
+        last_name_field = Person._meta.get_field("last_name")
+        new_connection = no_pool_connection()
+        new_connection.settings_dict["OPTIONS"]["server_side_binding"] = True
+        try:
+            with mock.patch("django.db.backends.postgresql.features.is_psycopg3", True):
+                self.assertEqual(new_connection.features.max_query_params, 2**16 - 1)
+                self.assertEqual(
+                    new_connection.ops.bulk_batch_size([first_name_field], objects),
+                    new_connection.features.max_query_params,
+                )
+                self.assertEqual(
+                    new_connection.ops.bulk_batch_size(
+                        [first_name_field, last_name_field], objects
+                    ),
+                    new_connection.features.max_query_params // 2,
+                )
+        finally:
+            new_connection.close()
 
     def test_prepare_join_on_clause_same_type(self):
         author_table = Author._meta.db_table
