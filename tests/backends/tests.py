@@ -5,6 +5,7 @@ import logging
 import threading
 import unittest
 import warnings
+from unittest import mock
 
 from django.core.management.color import no_style
 from django.db import (
@@ -1017,3 +1018,21 @@ class DBConstraintTestCase(TestCase):
         intermediary_model.objects.create(from_object_id=obj.id, to_object_id=12345)
         self.assertEqual(obj.related_objects.count(), 1)
         self.assertEqual(intermediary_model.objects.count(), 2)
+
+
+class CursorCloseErrorTest(TestCase):
+    def test_cursor_close_error_does_not_mask_execute_error(self):
+        """
+        cursor.close() errors should not mask cursor.execute() errors
+        (#29257).
+        """
+        original_error = DatabaseError("original execute error")
+        mock_cursor = mock.MagicMock()
+        mock_cursor.execute.side_effect = original_error
+        mock_cursor.close.side_effect = DatabaseError("cursor does not exist")
+
+        with mock.patch.object(connection, "cursor", return_value=mock_cursor):
+            compiler = Person.objects.all().query.get_compiler(DEFAULT_DB_ALIAS)
+            with self.assertRaises(DatabaseError) as cm:
+                compiler.execute_sql()
+        self.assertEqual(cm.exception, original_error)
