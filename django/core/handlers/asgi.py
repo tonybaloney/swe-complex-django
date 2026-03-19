@@ -54,8 +54,10 @@ class ASGIRequest(HttpRequest):
         self.path = scope["path"]
         self.script_name = get_script_prefix(scope)
         if self.script_name:
-            # TODO: Better is-prefix checking, slash handling?
             self.path_info = scope["path"].removeprefix(self.script_name)
+            if self.path_info[:1] not in ("", "/"):
+                # script_name matched a partial path segment; leave path intact.
+                self.path_info = scope["path"]
         else:
             self.path_info = scope["path"]
         # HTTP basics.
