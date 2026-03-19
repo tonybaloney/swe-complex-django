@@ -265,3 +265,78 @@ class TestFirstLast(TestCase):
             qs.first()
         with self.assertRaisesMessage(TypeError, msg % "last"):
             qs.last()
+
+    def test_first_empty_order_by(self):
+        """first() respects explicit empty order_by() and skips pk ordering."""
+        p1 = Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        Person.objects.create(name="Alice", birthday=datetime(1961, 2, 3))
+        qs = Person.objects.order_by()
+        self.assertTrue(qs.query._empty_ordering)
+        self.assertFalse(qs.ordered)
+        # first() should return a result without adding pk ordering.
+        self.assertIsNotNone(qs.first())
+
+    def test_last_empty_order_by(self):
+        """last() respects explicit empty order_by() and skips pk ordering."""
+        Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        Person.objects.create(name="Alice", birthday=datetime(1961, 2, 3))
+        qs = Person.objects.order_by()
+        self.assertTrue(qs.query._empty_ordering)
+        self.assertFalse(qs.ordered)
+        # last() should return a result without adding pk ordering.
+        self.assertIsNotNone(qs.last())
+
+    def test_first_empty_order_by_no_sql_ordering(self):
+        """
+        first() on a queryset with empty order_by() should not produce
+        an ORDER BY clause in the SQL.
+        """
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        qs = Person.objects.order_by()
+        with CaptureQueriesContext(connection) as ctx:
+            qs.first()
+        self.assertNotIn("ORDER BY", ctx.captured_queries[0]["sql"])
+
+    def test_last_empty_order_by_no_sql_ordering(self):
+        """
+        last() on a queryset with empty order_by() should not produce
+        an ORDER BY clause in the SQL.
+        """
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        qs = Person.objects.order_by()
+        with CaptureQueriesContext(connection) as ctx:
+            qs.last()
+        self.assertNotIn("ORDER BY", ctx.captured_queries[0]["sql"])
+
+    def test_empty_order_by_reset_by_subsequent_order_by(self):
+        """Subsequent order_by() with arguments resets the empty ordering flag."""
+        qs = Person.objects.order_by()
+        self.assertTrue(qs.query._empty_ordering)
+        qs2 = qs.order_by("name")
+        self.assertFalse(qs2.query._empty_ordering)
+        self.assertTrue(qs2.ordered)
+
+    def test_empty_order_by_preserved_through_filter(self):
+        """filter() after order_by() preserves the empty ordering state."""
+        qs = Person.objects.order_by().filter(name="Bob")
+        self.assertTrue(qs.query._empty_ordering)
+
+    def test_union_first_still_adds_pk_ordering(self):
+        """union().first() should still add pk ordering."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        qs1 = Person.objects.filter(name="Bob")
+        qs2 = Person.objects.filter(name="Alice")
+        union_qs = qs1.union(qs2)
+        self.assertFalse(union_qs.query._empty_ordering)
+        with CaptureQueriesContext(connection) as ctx:
+            union_qs.first()
+        self.assertIn("ORDER BY", ctx.captured_queries[0]["sql"])

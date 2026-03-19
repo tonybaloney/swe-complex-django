@@ -243,6 +243,9 @@ class Query(BaseExpression):
     default_cols = True
     default_ordering = True
     standard_ordering = True
+    # Set to True when order_by() is called with no arguments, indicating
+    # the user explicitly wants no ordering (used by first()/last()).
+    _empty_ordering = False
 
     filter_is_sticky = False
     subquery = False
@@ -2346,8 +2349,10 @@ class Query(BaseExpression):
             raise FieldError("Invalid order_by arguments: %s" % errors)
         if ordering:
             self.order_by += ordering
+            self._empty_ordering = False
         else:
             self.default_ordering = False
+            self._empty_ordering = True
 
     @property
     def orderby_issubset_groupby(self):
@@ -2391,6 +2396,7 @@ class Query(BaseExpression):
         self.extra_order_by = ()
         if clear_default:
             self.default_ordering = False
+            self._empty_ordering = False
 
     def set_group_by(self, allow_aliases=True):
         """

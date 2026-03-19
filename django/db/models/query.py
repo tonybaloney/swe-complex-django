@@ -1160,6 +1160,8 @@ class QuerySet(AltersData):
         """Return the first object of a query or None if no match is found."""
         if self.ordered:
             queryset = self
+        elif self.query._empty_ordering:
+            queryset = self
         else:
             self._check_ordering_first_last_queryset_aggregation(method="first")
             queryset = self.order_by("pk")
@@ -1173,6 +1175,8 @@ class QuerySet(AltersData):
         """Return the last object of a query or None if no match is found."""
         if self.ordered:
             queryset = self.reverse()
+        elif self.query._empty_ordering:
+            queryset = self
         else:
             self._check_ordering_first_last_queryset_aggregation(method="last")
             queryset = self.order_by("-pk")
