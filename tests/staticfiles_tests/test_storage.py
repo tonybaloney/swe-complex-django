@@ -77,6 +77,29 @@ class TestHashedFiles:
             self.assertIn(b"url()", content)
         self.assertPostCondition()
 
+    def test_css_comment_ignored(self):
+        relpath = self.hashed_file_path("cached/css/comments.css")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # URLs inside comments should not be processed.
+            self.assertIn(b'url("nonexistent.png")', content)
+            self.assertIn(b'@import "nonexistent.css"', content)
+            # URL outside comments should be processed.
+            self.assertIn(b'url("img/window.acae32e4532b.png")', content)
+        self.assertPostCondition()
+
+    def test_js_source_map_in_block_comment(self):
+        relpath = self.hashed_file_path("cached/comments.js")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # sourceMappingURL inside block comment should not be processed.
+            self.assertIn(b"//# sourceMappingURL=source_map.js.map", content)
+            # sourceMappingURL outside comment should be processed.
+            self.assertIn(
+                b"//# sourceMappingURL=source_map.js.99914b932bd3.map", content
+            )
+        self.assertPostCondition()
+
     def test_path_with_querystring(self):
         relpath = self.hashed_file_path("cached/styles.css?spam=eggs")
         self.assertEqual(relpath, "cached/styles.5e0040571e1a.css?spam=eggs")

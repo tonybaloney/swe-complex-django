@@ -351,9 +351,10 @@ argument. For example::
 
 .. admonition:: References in comments
 
-    ``ManifestStaticFilesStorage`` doesn't ignore paths in statements that are
-    commented out. This :ticket:`may crash on the nonexistent paths <21080>`.
-    You should check and eventually strip comments.
+    ``ManifestStaticFilesStorage`` ignores references in block comments
+    (``/* ... */``) in CSS and JavaScript files, as well as line comments
+    (``// ...``) in JavaScript files. References in other comment styles, or
+    inside string literals, are still processed.
 
 .. attribute:: storage.ManifestStaticFilesStorage.manifest_hash
 
