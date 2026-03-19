@@ -33,10 +33,17 @@ msgctxt "ordinal 0"
 msgid "{}th"
 msgstr "{}<sup>e</sup>"
 
+#. Translators: Ordinal format for the value 1, e.g. 1st. Some languages have
+#. a special case for this value such as French where it's 1er (premier)
+#. unlike other numbers ending in 1.
+msgctxt "ordinal 1 (first)"
+msgid "{}st"
+msgstr "{}<sup>er</sup>"
+
 #. Translators: Ordinal format when value ends with 1, e.g. 81st, except 11.
 msgctxt "ordinal 1"
 msgid "{}st"
-msgstr "{}<sup>er</sup>"
+msgstr "{}<sup>e</sup>"
 
 #. Translators: Ordinal format when value ends with 2, e.g. 82nd, except 12.
 msgctxt "ordinal 2"

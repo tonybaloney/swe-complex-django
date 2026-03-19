@@ -32,7 +32,12 @@ def ordinal(value):
         return value
     if value < 0:
         return str(value)
-    if value % 100 in (11, 12, 13):
+    if value == 1:
+        # Translators: Ordinal format for the value 1, e.g. 1st. Some
+        # languages have a special case for this value such as French where
+        # it's 1er (premier) unlike other numbers ending in 1.
+        value = pgettext("ordinal 1 (first)", "{}st").format(value)
+    elif value % 100 in (11, 12, 13):
         # Translators: Ordinal format for 11 (11th), 12 (12th), and 13 (13th).
         value = pgettext("ordinal 11, 12, 13", "{}th").format(value)
     else:
