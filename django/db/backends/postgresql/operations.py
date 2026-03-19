@@ -1,7 +1,9 @@
 import json
 from functools import lru_cache, partial
+from itertools import chain
 
 from django.conf import settings
+from django.db import models
 from django.db.backends.base.operations import BaseDatabaseOperations
 from django.db.backends.postgresql.compiler import InsertUnnest
 from django.db.backends.postgresql.psycopg_any import (
@@ -154,6 +156,24 @@ class DatabaseOperations(BaseDatabaseOperations):
         if isinstance(placeholder_rows, InsertUnnest):
             return f"SELECT * FROM {placeholder_rows}"
         return super().bulk_insert_sql(fields, placeholder_rows)
+
+    def bulk_batch_size(self, fields, objs):
+        """
+        PostgreSQL restricts the number of parameters in a query when using
+        server-side binding.
+        """
+        max_query_params = self.connection.features.max_query_params
+        if max_query_params is not None and fields:
+            fields = list(
+                chain.from_iterable(
+                    field.fields
+                    if isinstance(field, models.CompositePrimaryKey)
+                    else [field]
+                    for field in fields
+                )
+            )
+            return max_query_params // len(fields)
+        return len(objs)
 
     def lookup_cast(self, lookup_type, internal_type=None):
         lookup = "%s"

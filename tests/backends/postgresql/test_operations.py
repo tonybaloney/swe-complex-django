@@ -1,7 +1,8 @@
 import unittest
+from unittest import mock
 
 from django.core.management.color import no_style
-from django.db import connection
+from django.db import connection, models
 from django.db.models.expressions import Col
 from django.db.models.functions import Cast
 from django.test import SimpleTestCase
@@ -78,3 +79,31 @@ class PostgreSQLOperationsTests(SimpleTestCase):
         self.assertEqual(
             rhs_expr, Cast(Col(book_table, book_fk_field), author_id_field)
         )
+
+    def test_bulk_batch_size(self):
+        objects = range(2**16)
+        self.assertEqual(connection.ops.bulk_batch_size([], objects), len(objects))
+        first_name_field = Person._meta.get_field("first_name")
+        last_name_field = Person._meta.get_field("last_name")
+        with mock.patch.object(
+            type(connection.features), "max_query_params", 2**16 - 1
+        ):
+            self.assertEqual(
+                connection.ops.bulk_batch_size([first_name_field], objects),
+                2**16 - 1,
+            )
+            self.assertEqual(
+                connection.ops.bulk_batch_size(
+                    [first_name_field, last_name_field],
+                    objects,
+                ),
+                (2**16 - 1) // 2,
+            )
+            composite_pk = models.CompositePrimaryKey("first_name", "last_name")
+            composite_pk.fields = [first_name_field, last_name_field]
+            self.assertEqual(
+                connection.ops.bulk_batch_size(
+                    [composite_pk, first_name_field], objects
+                ),
+                (2**16 - 1) // 3,
+            )
