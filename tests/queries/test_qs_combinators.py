@@ -418,6 +418,15 @@ class QuerySetSetOperationTests(TestCase):
         qs2 = base_qs.filter(name="a2")
         self.assertEqual(qs1.union(qs2).first(), a1)
 
+    def test_union_with_last(self):
+        e1 = ExtraInfo.objects.create(value=7, info="e1")
+        Author.objects.create(name="a1", num=1, extra=e1)
+        a2 = Author.objects.create(name="a2", num=2, extra=e1)
+        base_qs = Author.objects.order_by()
+        qs1 = base_qs.filter(name="a1")
+        qs2 = base_qs.filter(name="a2")
+        self.assertEqual(qs1.union(qs2).last(), a2)
+
     def test_union_multiple_models_with_values_list_and_order(self):
         reserved_name = ReservedName.objects.create(name="rn1", order=0)
         qs1 = Celebrity.objects.all()

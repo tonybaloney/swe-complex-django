@@ -222,6 +222,20 @@ class TestFirstLast(TestCase):
             Person.objects.filter(birthday__lte=datetime(1940, 1, 1)).last()
         )
 
+    def test_first_last_order_by_respects_unordered_queryset(self):
+        p1 = Person.objects.create(name="Alice", birthday=datetime(1950, 1, 1))
+        p2 = Person.objects.create(name="Bob", birthday=datetime(1960, 2, 3))
+        qs = Person.objects.order_by()
+        self.assertIs(qs.ordered, False)
+        self.assertIn(qs.first(), {p1, p2})
+        self.assertIn(qs.last(), {p1, p2})
+
+    def test_first_last_order_by_does_not_add_implicit_pk_ordering(self):
+        Person.objects.create(name="Alice", birthday=datetime(1950, 1, 1))
+        Person.objects.create(name="Bob", birthday=datetime(1960, 2, 3))
+        sql = str(Person.objects.order_by()[:1].query)
+        self.assertNotIn('ORDER BY "get_earliest_or_latest_person"."id"', sql)
+
     def test_index_error_not_suppressed(self):
         """
         #23555 -- Unexpected IndexError exceptions in QuerySet iteration
