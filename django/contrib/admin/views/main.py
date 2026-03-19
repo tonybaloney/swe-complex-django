@@ -92,6 +92,7 @@ class ChangeList:
         self.has_filters = None
         self.has_active_filters = None
         self.clear_all_filters_qs = None
+        self.formset = None
         self.date_hierarchy = date_hierarchy
         self.search_fields = search_fields
         self.list_select_related = list_select_related
