@@ -6,6 +6,7 @@ from django.core.exceptions import (
     TooManyFilesSent,
 )
 from django.core.handlers.wsgi import WSGIRequest
+from django.http.multipartparser import MultiPartParser
 from django.test import SimpleTestCase
 from django.test.client import FakePayload
 
@@ -16,6 +17,14 @@ TOO_MANY_FILES_MSG = (
     "The number of files exceeded settings.DATA_UPLOAD_MAX_NUMBER_FILES."
 )
 TOO_MUCH_DATA_MSG = "Request body exceeded settings.DATA_UPLOAD_MAX_MEMORY_SIZE."
+
+
+class TrackingMultiPartParser(MultiPartParser):
+    used = False
+
+    def parse(self):
+        self.__class__.used = True
+        return super().parse()
 
 
 class DataUploadMaxMemorySizeFormPostTests(SimpleTestCase):
@@ -100,9 +109,12 @@ class DataUploadMaxMemorySizeMultipartPostTests(SimpleTestCase):
                 "wsgi.input": payload,
             }
         )
+        request.upload_parser_class = TrackingMultiPartParser
+        TrackingMultiPartParser.used = False
         with self.settings(DATA_UPLOAD_MAX_MEMORY_SIZE=1):
             request._load_post_and_files()
             self.assertIn("file1", request.FILES, "Upload file not present")
+        self.assertIs(TrackingMultiPartParser.used, True)
 
 
 class DataUploadMaxMemorySizeGetTests(SimpleTestCase):
