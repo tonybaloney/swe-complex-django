@@ -1428,9 +1428,13 @@ class ModelAdmin(BaseModelAdmin):
                     msg = _('The app "%s" could not be found.') % source_model_name
                     self.message_user(request, msg, messages.ERROR)
                 else:
-                    source_admin = self.admin_site._registry[source_model]
-                    form = source_admin.get_form(request)()
-                    if self.opts.verbose_name_plural in form.fields:
+                    source_admin = self.admin_site._registry.get(source_model)
+                    form = (
+                        source_admin.get_form(request)()
+                        if source_admin is not None
+                        else None
+                    )
+                    if form and self.opts.verbose_name_plural in form.fields:
                         field = form.fields[self.opts.verbose_name_plural]
                         for option_value, option_label in field.choices:
                             # Check if this is an optgroup (label is a sequence
