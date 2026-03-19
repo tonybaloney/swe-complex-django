@@ -3,6 +3,7 @@ from decimal import Decimal
 from math import pi
 
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import connection
 from django.db.models import Case, F, FloatField, Value, When
 from django.db.models.expressions import (
@@ -20,6 +21,7 @@ from django.utils import timezone
 
 from .models import (
     Article,
+    AutoNowAddFile,
     DBArticle,
     DBDefaults,
     DBDefaultsFK,
@@ -237,3 +239,16 @@ class AllowedDefaultTests(SimpleTestCase):
         for expression in tests:
             with self.subTest(expression=expression):
                 self.assertIs(expression.allowed_default, False)
+
+
+class AutoNowAddTests(TestCase):
+    def test_auto_now_add_set_before_file_upload_to(self):
+        """auto_now_add fields should be populated before FileField.upload_to."""
+        obj = AutoNowAddFile()
+        obj.testfile = ContentFile(b"test content", name="test.txt")
+        obj.save()
+        self.assertIsNotNone(obj.created_at)
+        self.assertIn(
+            obj.created_at.strftime("%Y/%m/%d"),
+            obj.testfile.name,
+        )

@@ -9,12 +9,17 @@ This example uses ``datetime.datetime.now`` as the default for the ``pub_date``
 field.
 """
 
+import tempfile
 from datetime import datetime
 from decimal import Decimal
 
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.db.models.functions import Coalesce, ExtractYear, Now, Pi
 from django.db.models.lookups import GreaterThan
+
+temp_storage_location = tempfile.mkdtemp()
+temp_storage = FileSystemStorage(location=temp_storage_location)
 
 
 class Article(models.Model):
@@ -67,4 +72,15 @@ class DBDefaultsPK(models.Model):
 class DBDefaultsFK(models.Model):
     language_code = models.ForeignKey(
         DBDefaultsPK, db_default="fr", on_delete=models.CASCADE
+    )
+
+
+def auto_now_add_upload_to(instance, filename):
+    return "%s/%s" % (instance.created_at.strftime("%Y/%m/%d"), filename)
+
+
+class AutoNowAddFile(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    testfile = models.FileField(
+        storage=temp_storage, upload_to=auto_now_add_upload_to
     )
