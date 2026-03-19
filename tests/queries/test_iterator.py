@@ -1,14 +1,27 @@
 import datetime
 from unittest import mock
 
-from django.db import connections
+from django.db import DEFAULT_DB_ALIAS, DatabaseError, connection, connections
 from django.db.models.sql.compiler import cursor_iter
+from django.db.models.sql.constants import NO_RESULTS
 from django.test import TestCase
 
 from .models import Article
 
 
 class QuerySetIteratorTests(TestCase):
+    def test_execute_sql_closes_cursor_without_masking_error(self):
+        msg = "syntax error"
+        compiler = Article.objects.all().query.get_compiler(DEFAULT_DB_ALIAS)
+        cursor = mock.Mock(
+            execute=mock.Mock(side_effect=DatabaseError(msg)),
+            close=mock.Mock(side_effect=DatabaseError("cursor does not exist")),
+        )
+        with mock.patch.object(connection, "cursor", return_value=cursor):
+            with self.assertRaisesMessage(DatabaseError, msg):
+                compiler.execute_sql(NO_RESULTS)
+        self.assertIs(cursor.close.called, True)
+
     itersize_index_in_mock_args = 3
 
     @classmethod
