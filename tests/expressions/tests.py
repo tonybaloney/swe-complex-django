@@ -1671,6 +1671,16 @@ class ExpressionsNumericTests(TestCase):
         with self.assertNumQueries(expected_num_queries):
             self.assertEqual(n.decimal_value, Decimal("0.1"))
 
+    def test_decimal_division_literal_value(self):
+        obj = Number.objects.create(integer=1, decimal_value=Decimal("1"))
+        result = (
+            Number.objects.filter(pk=obj.pk)
+            .annotate(result=F("decimal_value") / Value(Decimal("3")))
+            .get()
+            .result
+        )
+        self.assertAlmostEqual(result, Decimal("0.33333"), places=5)
+
 
 class ExpressionOperatorTests(TestCase):
     @classmethod
