@@ -17,6 +17,7 @@ from django.db.migrations.utils import (
     RegexObject,
     resolve_relation,
 )
+from django.db.models.options import normalize_together
 from django.utils.functional import cached_property
 
 
@@ -1768,7 +1769,7 @@ class MigrationAutodetector:
             )
 
             new_value = new_model_state.options.get(option_name)
-            new_value = set(new_value) if new_value else set()
+            new_value = set(normalize_together(new_value))
 
             if old_value != new_value:
                 dependencies = []
