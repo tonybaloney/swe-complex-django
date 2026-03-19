@@ -302,8 +302,15 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     def get_decimalfield_converter(self, expression):
         # SQLite stores only 15 significant digits. Digits coming from
-        # float inaccuracy must be removed.
-        create_decimal = decimal.Context(prec=15).create_decimal_from_float
+        # float inaccuracy must be removed. Integers can be converted to
+        # Decimal directly, bypassing the lossy float conversion.
+        create_decimal_from_float = decimal.Context(prec=15).create_decimal_from_float
+
+        def to_decimal(value):
+            if isinstance(value, int):
+                return decimal.Decimal(value)
+            return create_decimal_from_float(value)
+
         if isinstance(expression, Col):
             quantize_value = decimal.Decimal(1).scaleb(
                 -expression.output_field.decimal_places
@@ -311,7 +318,7 @@ class DatabaseOperations(BaseDatabaseOperations):
 
             def converter(value, expression, connection):
                 if value is not None:
-                    return create_decimal(value).quantize(
+                    return to_decimal(value).quantize(
                         quantize_value, context=expression.output_field.context
                     )
 
@@ -319,7 +326,7 @@ class DatabaseOperations(BaseDatabaseOperations):
 
             def converter(value, expression, connection):
                 if value is not None:
-                    return create_decimal(value)
+                    return to_decimal(value)
 
         return converter
 
