@@ -876,6 +876,17 @@ class ChangeListTests(TestCase):
                     cl = model_admin.get_changelist_instance(request)
                 self.assertCountEqual(cl.queryset, expected_result)
 
+    def test_search_with_exact_lookup_no_cast(self):
+        """Exact lookups on non-string fields don't use CAST."""
+        Child.objects.create(name="Asher", age=11)
+        model_admin = ChildAdmin(Child, custom_site)
+        request = self.factory.get("/", data={SEARCH_VAR: "11"})
+        request.user = self.superuser
+        with CaptureQueriesContext(connection) as context:
+            model_admin.get_changelist_instance(request)
+        for query in context.captured_queries:
+            self.assertNotIn("CAST", query["sql"].upper())
+
     def test_search_with_exact_lookup_relationship_field(self):
         child = Child.objects.create(name="I am a child", age=11)
         grandchild = GrandChild.objects.create(name="I am a grandchild", parent=child)

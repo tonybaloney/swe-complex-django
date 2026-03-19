@@ -41,7 +41,7 @@ from django.core.exceptions import (
 from django.core.paginator import Paginator
 from django.db import models, router, transaction
 from django.db.models.constants import LOOKUP_SEP
-from django.db.models.functions import Cast
+
 from django.forms.formsets import DELETION_FIELD_NAME, all_valid
 from django.forms.models import (
     BaseInlineFormSet,
@@ -1159,13 +1159,11 @@ class ModelAdmin(BaseModelAdmin):
                         if path_part == "exact" and not isinstance(
                             prev_field, (models.CharField, models.TextField)
                         ):
-                            field_name_without_exact = "__".join(lookup_fields[:i])
-                            alias = Cast(
-                                field_name_without_exact,
-                                output_field=models.CharField(),
-                            )
-                            alias_name = "_".join(lookup_fields[:i])
-                            return f"{alias_name}_str", alias
+                            if hasattr(prev_field, "get_related_field"):
+                                validate_field = prev_field.get_related_field()
+                            else:
+                                validate_field = prev_field
+                            return field_name, validate_field
                         else:
                             return field_name, None
                 else:
@@ -1179,27 +1177,39 @@ class ModelAdmin(BaseModelAdmin):
         may_have_duplicates = False
         search_fields = self.get_search_fields(request)
         if search_fields and search_term:
-            str_aliases = {}
             orm_lookups = []
+            field_validators = {}
             for field in search_fields:
-                lookup, str_alias = construct_search(str(field))
+                lookup, validate_field = construct_search(str(field))
                 orm_lookups.append(lookup)
-                if str_alias:
-                    str_aliases[lookup] = str_alias
-
-            if str_aliases:
-                queryset = queryset.alias(**str_aliases)
+                if validate_field is not None:
+                    field_validators[lookup] = validate_field
 
             term_queries = []
             for bit in smart_split(search_term):
                 if bit.startswith(('"', "'")) and bit[0] == bit[-1]:
                     bit = unescape_string_literal(bit)
-                or_queries = models.Q.create(
-                    [(orm_lookup, bit) for orm_lookup in orm_lookups],
-                    connector=models.Q.OR,
-                )
-                term_queries.append(or_queries)
-            queryset = queryset.filter(models.Q.create(term_queries))
+                or_queries_list = []
+                for orm_lookup in orm_lookups:
+                    validate_field = field_validators.get(orm_lookup)
+                    if validate_field is not None:
+                        try:
+                            validate_field.to_python(bit)
+                        except (ValidationError, ValueError):
+                            continue
+                    or_queries_list.append((orm_lookup, bit))
+                if or_queries_list:
+                    term_queries.append(
+                        models.Q.create(
+                            or_queries_list, connector=models.Q.OR
+                        )
+                    )
+                else:
+                    queryset = queryset.none()
+                    term_queries = []
+                    break
+            if term_queries:
+                queryset = queryset.filter(models.Q.create(term_queries))
             may_have_duplicates |= any(
                 lookup_spawns_duplicates(self.opts, search_spec)
                 for search_spec in orm_lookups
