@@ -130,6 +130,10 @@ See :ref:`custom-boundfield` for more details about this feature.
 Minor features
 --------------
 
+* :class:`~django.contrib.postgres.constraints.ExclusionConstraint` now supports
+  ``HASH`` indexes on PostgreSQL.
+
+
 :mod:`django.contrib.admin`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

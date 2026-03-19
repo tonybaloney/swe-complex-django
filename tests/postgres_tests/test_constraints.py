@@ -299,13 +299,21 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             )
 
     def test_invalid_index_type(self):
-        msg = "Exclusion constraints only support GiST or SP-GiST indexes."
+        msg = "Exclusion constraints only support GiST, SP-GiST, or Hash indexes."
         with self.assertRaisesMessage(ValueError, msg):
             ExclusionConstraint(
                 index_type="gin",
                 name="exclude_invalid_index_type",
                 expressions=[(F("datespan"), RangeOperators.OVERLAPS)],
             )
+
+    def test_hash_index_type(self):
+        constraint = ExclusionConstraint(
+            index_type="Hash",
+            name="exclude_hash_index_type",
+            expressions=[(F("datespan"), RangeOperators.OVERLAPS)],
+        )
+        self.assertEqual(constraint.index_type, "Hash")
 
     def test_invalid_expressions(self):
         msg = "The expressions must be a list of 2-tuples."
@@ -423,6 +431,16 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             "<ExclusionConstraint: index_type='SPGiST' expressions=["
             "(F(datespan), '-|-')] name='exclude_overlapping' "
             "condition=(AND: ('cancelled', False))>",
+        )
+        constraint = ExclusionConstraint(
+            name="exclude_overlapping",
+            expressions=[(F("datespan"), RangeOperators.ADJACENT_TO)],
+            index_type="Hash",
+        )
+        self.assertEqual(
+            repr(constraint),
+            "<ExclusionConstraint: index_type='Hash' expressions=["
+            "(F(datespan), '-|-')] name='exclude_overlapping'>",
         )
         constraint = ExclusionConstraint(
             name="exclude_overlapping",
@@ -562,6 +580,24 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             condition=Q(cancelled=False),
             violation_error_message="custom error",
         )
+        constraint_hash_1 = ExclusionConstraint(
+            name="exclude_overlapping",
+            index_type="hash",
+            expressions=[
+                ("datespan", RangeOperators.OVERLAPS),
+                ("room", RangeOperators.EQUAL),
+            ],
+            include=["cancelled"],
+        )
+        constraint_hash_2 = ExclusionConstraint(
+            name="exclude_overlapping",
+            index_type="HASH",
+            expressions=[
+                ("datespan", RangeOperators.OVERLAPS),
+                ("room", RangeOperators.EQUAL),
+            ],
+            include=["cancelled"],
+        )
         constraint_11 = ExclusionConstraint(
             name="exclude_overlapping",
             expressions=[
@@ -592,6 +628,8 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
         self.assertNotEqual(constraint_2, constraint_7)
         self.assertEqual(constraint_7, constraint_8)
         self.assertEqual(constraint_7, constraint_9)
+        self.assertEqual(constraint_hash_1, constraint_hash_2)
+        self.assertNotEqual(constraint_7, constraint_hash_1)
         self.assertNotEqual(constraint_4, constraint_5)
         self.assertNotEqual(constraint_5, constraint_6)
         self.assertNotEqual(constraint_1, object())
@@ -625,30 +663,32 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
         )
 
     def test_deconstruct_index_type(self):
-        constraint = ExclusionConstraint(
-            name="exclude_overlapping",
-            index_type="SPGIST",
-            expressions=[
-                ("datespan", RangeOperators.OVERLAPS),
-                ("room", RangeOperators.EQUAL),
-            ],
-        )
-        path, args, kwargs = constraint.deconstruct()
-        self.assertEqual(
-            path, "django.contrib.postgres.constraints.ExclusionConstraint"
-        )
-        self.assertEqual(args, ())
-        self.assertEqual(
-            kwargs,
-            {
-                "name": "exclude_overlapping",
-                "index_type": "SPGIST",
-                "expressions": [
-                    ("datespan", RangeOperators.OVERLAPS),
-                    ("room", RangeOperators.EQUAL),
-                ],
-            },
-        )
+        for index_type in ["SPGIST", "HASH"]:
+            with self.subTest(index_type=index_type):
+                constraint = ExclusionConstraint(
+                    name="exclude_overlapping",
+                    index_type=index_type,
+                    expressions=[
+                        ("datespan", RangeOperators.OVERLAPS),
+                        ("room", RangeOperators.EQUAL),
+                    ],
+                )
+                path, args, kwargs = constraint.deconstruct()
+                self.assertEqual(
+                    path, "django.contrib.postgres.constraints.ExclusionConstraint"
+                )
+                self.assertEqual(args, ())
+                self.assertEqual(
+                    kwargs,
+                    {
+                        "name": "exclude_overlapping",
+                        "index_type": index_type,
+                        "expressions": [
+                            ("datespan", RangeOperators.OVERLAPS),
+                            ("room", RangeOperators.EQUAL),
+                        ],
+                    },
+                )
 
     def test_deconstruct_condition(self):
         constraint = ExclusionConstraint(
