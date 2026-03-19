@@ -1,3 +1,5 @@
+import warnings
+
 from django.apps import apps as global_apps
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, migrations, router, transaction
 
@@ -30,6 +32,13 @@ class RenameContentType(migrations.RunPython):
                 # Gracefully fallback if a stale content type causes a
                 # conflict as remove_stale_contenttypes will take care of
                 # asking the user what should be done next.
+                warnings.warn(
+                    "RenameContentType failed to rename the content type "
+                    f"'{self.app_label} | {old_model}' to '{new_model}' because "
+                    "a stale content type with the new name exists. Run "
+                    "'remove_stale_contenttypes' to resolve this conflict.",
+                    RuntimeWarning,
+                )
                 content_type.model = old_model
             else:
                 # Clear the cache as the `get_by_natural_key()` call will cache
