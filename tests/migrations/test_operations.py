@@ -5542,6 +5542,10 @@ class OperationTests(OperationTestBase):
         self.assertIs(False, operation.reduce(operation, []))
         elidable_operation = migrations.RunSQL("SELECT 1 FROM void;", elidable=True)
         self.assertEqual(elidable_operation.reduce(operation, []), [operation])
+        self.assertEqual(
+            elidable_operation.deconstruct(),
+            ("RunSQL", [], {"sql": "SELECT 1 FROM void;", "elidable": True}),
+        )
 
     def test_run_sql_params(self):
         """
@@ -5795,6 +5799,10 @@ class OperationTests(OperationTestBase):
         self.assertIs(False, operation.reduce(operation, []))
         elidable_operation = migrations.RunPython(inner_method, elidable=True)
         self.assertEqual(elidable_operation.reduce(operation, []), [operation])
+        self.assertEqual(
+            elidable_operation.deconstruct(),
+            ("RunPython", [], {"code": inner_method, "elidable": True}),
+        )
 
     def test_run_python_invalid_reverse_code(self):
         msg = "RunPython must be supplied with callable arguments"
