@@ -1,5 +1,20 @@
+import warnings
+
 from django.apps import apps as global_apps
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, migrations, router, transaction
+
+
+def _rename_conflict_warn(app_label, old_model, new_model):
+    warnings.warn(
+        "Could not rename content type '%(app_label)s.%(old_model)s' to "
+        "'%(new_model)s' due to an existing conflicting content type. Run "
+        "'remove_stale_contenttypes' to clean up stale entries." % {
+            "app_label": app_label,
+            "old_model": old_model,
+            "new_model": new_model,
+        },
+        RuntimeWarning,
+    )
 
 
 class RenameContentType(migrations.RunPython):
@@ -31,6 +46,7 @@ class RenameContentType(migrations.RunPython):
                 # conflict as remove_stale_contenttypes will take care of
                 # asking the user what should be done next.
                 content_type.model = old_model
+                _rename_conflict_warn(self.app_label, old_model, new_model)
             else:
                 # Clear the cache as the `get_by_natural_key()` call will cache
                 # the renamed ContentType instance by its old model name.

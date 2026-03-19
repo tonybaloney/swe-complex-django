@@ -1,10 +1,12 @@
+from unittest import mock
+
 from django.apps.registry import apps
 from django.conf import settings
 from django.contrib.contenttypes import management as contenttypes_management
 from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
-from django.db import migrations, models
-from django.test import TransactionTestCase, override_settings
+from django.db import IntegrityError, connections, migrations, models
+from django.test import TransactionTestCase, ignore_warnings, override_settings
 
 
 @override_settings(
@@ -151,6 +153,7 @@ class ContentTypeOperationsTests(TransactionTestCase):
             ).exists()
         )
 
+    @ignore_warnings(category=RuntimeWarning)
     def test_content_type_rename_conflict(self):
         ContentType.objects.create(app_label="contenttypes_tests", model="foo")
         ContentType.objects.create(app_label="contenttypes_tests", model="renamedfoo")
@@ -189,3 +192,22 @@ class ContentTypeOperationsTests(TransactionTestCase):
                 app_label="contenttypes_tests", model="renamedfoo"
             ).exists()
         )
+
+    def test_content_type_rename_conflict_warns(self):
+        ContentType.objects.create(app_label="contenttypes_tests", model="foo")
+        operation = contenttypes_management.RenameContentType(
+            "contenttypes_tests", "foo", "renamedfoo"
+        )
+        msg = (
+            "Could not rename content type 'contenttypes_tests.foo' to "
+            "'renamedfoo' due to an existing conflicting content type. Run "
+            "'remove_stale_contenttypes' to clean up stale entries."
+        )
+        with (
+            mock.patch.object(
+                contenttypes_management.transaction, "atomic"
+            ) as mocked_atomic,
+            self.assertWarnsMessage(RuntimeWarning, msg),
+        ):
+            mocked_atomic.return_value.__enter__.side_effect = IntegrityError
+            operation.rename_forward(apps, mock.Mock(connection=connections["default"]))
