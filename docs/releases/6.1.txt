@@ -439,6 +439,9 @@ Miscellaneous
   primary key when a ``QuerySet``'s ordering has been forcibly cleared by
   calling :meth:`~.QuerySet.order_by` with no arguments.
 
+* The undocumented ``django.utils.text.Truncator.MAX_LENGTH_HTML`` attribute is
+  removed.
+
 .. _deprecated-features-6.1:
 
 Features deprecated in 6.1
