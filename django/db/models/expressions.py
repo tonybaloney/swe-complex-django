@@ -224,8 +224,8 @@ class BaseExpression:
 
     def as_sql(self, compiler, connection):
         """
-        Responsible for returning a (sql, [params]) tuple to be included
-        in the current query.
+        Responsible for returning a (sql, params) tuple to be included in
+        the current query.
 
         Different backends can provide their own implementation, by
         providing an `as_{vendor}` method and patching the Expression:
@@ -246,7 +246,7 @@ class BaseExpression:
 
         Return: (sql, params)
           Where `sql` is a string containing ordered sql parameters to be
-          replaced with the elements of the list `params`.
+          replaced with the elements of `params`, which is a list or tuple.
         """
         raise NotImplementedError("Subclasses must implement as_sql()")
 
