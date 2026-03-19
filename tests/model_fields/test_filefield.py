@@ -209,3 +209,20 @@ class FileFieldTests(TestCase):
 
         document = MyDocument(myfile="test_file.py")
         self.assertEqual(document.myfile.field.model, MyDocument)
+
+    @isolate_apps("model_fields")
+    def test_auto_now_add_available_in_upload_to(self):
+        def upload_to(instance, filename):
+            return f"{instance.created.isoformat()}-{filename}"
+
+        class MyDocument(models.Model):
+            created = models.DateTimeField(auto_now_add=True)
+            myfile = models.FileField(upload_to=upload_to)
+
+        document = MyDocument(myfile=ContentFile(b"", name="test.txt"))
+        created_field = document._meta.get_field("created")
+        myfile_field = document._meta.get_field("myfile")
+        created_field.pre_save(document, add=True)
+        myfile_field.pre_save(document, add=True)
+        self.assertTrue(document.myfile.name.endswith("-test.txt"))
+        self.assertIsNotNone(document.created)
