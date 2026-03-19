@@ -139,6 +139,7 @@ class ChangeList:
             self.list_editable = ()
         else:
             self.list_editable = list_editable
+        self.formset = None
         self.queryset = self.get_queryset(request)
         self.get_results(request)
         if self.is_popup:
