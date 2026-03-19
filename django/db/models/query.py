@@ -1156,13 +1156,15 @@ class QuerySet(AltersData):
     async def alatest(self, *fields):
         return await sync_to_async(self.latest)(*fields)
 
+    def _check_ordering_first_last_queryset(self, method):
+        if self.ordered or not self.query.default_ordering:
+            return True
+        self._check_ordering_first_last_queryset_aggregation(method=method)
+        return False
+
     def first(self):
         """Return the first object of a query or None if no match is found."""
-        if self.ordered:
-            queryset = self
-        else:
-            self._check_ordering_first_last_queryset_aggregation(method="first")
-            queryset = self.order_by("pk")
+        queryset = self if self._check_ordering_first_last_queryset("first") else self.order_by("pk")
         for obj in queryset[:1]:
             return obj
 
@@ -1171,11 +1173,7 @@ class QuerySet(AltersData):
 
     def last(self):
         """Return the last object of a query or None if no match is found."""
-        if self.ordered:
-            queryset = self.reverse()
-        else:
-            self._check_ordering_first_last_queryset_aggregation(method="last")
-            queryset = self.order_by("-pk")
+        queryset = self.reverse() if self._check_ordering_first_last_queryset("last") else self.order_by("-pk")
         for obj in queryset[:1]:
             return obj
 
@@ -1679,6 +1677,7 @@ class QuerySet(AltersData):
         clone = self._chain()
         # Clear limits and ordering so they can be reapplied
         clone.query.clear_ordering(force=True)
+        clone.query.default_ordering = True
         clone.query.clear_limits()
         clone.query.combined_queries = (self.query, *(qs.query for qs in other_qs))
         clone.query.combinator = combinator

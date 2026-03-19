@@ -135,6 +135,12 @@ class OrderingTests(TestCase):
             attrgetter("headline"),
         )
 
+    def test_order_by_without_arguments_clears_default_ordering(self):
+        self.assertFalse(Article.objects.order_by().ordered)
+        self.assertFalse(Article.objects.order_by().query.default_ordering)
+        self.assertEqual(Article.objects.order_by().first(), self.a1)
+        self.assertEqual(Article.objects.order_by().last(), self.a1)
+
     def test_order_by_nulls_first_and_last(self):
         msg = "nulls_first and nulls_last are mutually exclusive"
         with self.assertRaisesMessage(ValueError, msg):
