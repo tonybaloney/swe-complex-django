@@ -1986,6 +1986,14 @@ class RedisCacheTests(BaseCacheTests, TestCase):
         self.assertEqual(pool.connection_kwargs["socket_timeout"], 0.1)
         self.assertIs(pool.connection_kwargs["retry_on_timeout"], True)
 
+    def test_driver_info(self):
+        from redis.driver_info import DriverInfo
+
+        pool = cache._cache._get_connection_pool(write=False)
+        driver_info = pool.connection_kwargs["driver_info"]
+        self.assertIsInstance(driver_info, DriverInfo)
+        self.assertIn("django", driver_info.formatted_name)
+
 
 class FileBasedCachePathLibTests(FileBasedCacheTests):
     def mkdtemp(self):
