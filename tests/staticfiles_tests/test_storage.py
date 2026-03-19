@@ -77,6 +77,18 @@ class TestHashedFiles:
             self.assertIn(b"url()", content)
         self.assertPostCondition()
 
+    def test_css_comments_ignored(self):
+        relpath = self.hashed_file_path("cached/css/comments.css")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # URLs inside block comments should not be rewritten.
+            self.assertIn(b'url("../cached/styles.css")', content)
+            self.assertIn(b'@import url("../cached/styles.css")', content)
+            # URLs outside comments should still be rewritten.
+            self.assertNotIn(b"url(../img/relative.png)", content)
+            self.assertIn(b"img/relative.acae32e4532b.png", content)
+        self.assertPostCondition()
+
     def test_path_with_querystring(self):
         relpath = self.hashed_file_path("cached/styles.css?spam=eggs")
         self.assertEqual(relpath, "cached/styles.5e0040571e1a.css?spam=eggs")
@@ -403,6 +415,21 @@ class TestExtraPatternsStorage(CollectionTestCase):
         self.assertEqual(relpath, "cached/test.388d7a790d46.js")
         with storage.staticfiles_storage.open(relpath) as relfile:
             self.assertIn(b'JS_URL("import.f53576679e5a.css")', relfile.read())
+
+    def test_js_comments_ignored(self):
+        relpath = self.cached_file_path("cached/comments.js")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # URLs inside block and line comments should not be rewritten.
+            self.assertIn(
+                b'/* This URL should be ignored: url("import.css") */', content
+            )
+            self.assertIn(
+                b'// This URL should also be ignored: url("import.css")', content
+            )
+            # URLs outside comments should still be rewritten.
+            self.assertNotIn(b'url("import.css");', content)
+            self.assertIn(b"import.f53576679e5a.css", content)
 
 
 @override_settings(

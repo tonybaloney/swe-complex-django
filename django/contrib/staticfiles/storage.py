@@ -48,6 +48,10 @@ class HashedFilesMixin:
     default_template = """url("%(url)s")"""
     max_post_process_passes = 5
     support_js_module_import_aggregation = False
+    _comment_patterns = {
+        ".css": re.compile(r"/\*[\s\S]*?\*/"),
+        ".js": re.compile(r"/\*[\s\S]*?\*/|//[^\n]*"),
+    }
     _js_module_import_aggregation_patterns = (
         "*.js",
         (
@@ -204,7 +208,18 @@ class HashedFilesMixin:
         """
         return self._url(self.stored_name, name, force)
 
-    def url_converter(self, name, hashed_files, template=None):
+    @classmethod
+    def _get_comment_ranges(cls, content, name):
+        """
+        Return a list of (start, end) positions for comments in the content.
+        """
+        _, ext = os.path.splitext(name)
+        pattern = cls._comment_patterns.get(ext.lower())
+        if pattern is None:
+            return []
+        return [(m.start(), m.end()) for m in pattern.finditer(content)]
+
+    def url_converter(self, name, hashed_files, template=None, comment_ranges=None):
         """
         Return the custom URL converter for the given file name.
         """
@@ -220,6 +235,14 @@ class HashedFilesMixin:
             """
             matches = matchobj.groupdict()
             matched = matches["matched"]
+
+            # Skip matches inside comments, but not matches that start at
+            # the same position as the comment (e.g. sourceMappingURL).
+            if comment_ranges:
+                start = matchobj.start()
+                if any(cs < start < ce for cs, ce in comment_ranges):
+                    return matched
+
             url = matches["url"]
 
             # Ignore absolute/protocol-relative and data-uri URLs.
@@ -374,8 +397,14 @@ class HashedFilesMixin:
                     for extension, patterns in self._patterns.items():
                         if matches_patterns(path, (extension,)):
                             for pattern, template in patterns:
+                                comment_ranges = self._get_comment_ranges(
+                                    content, name
+                                )
                                 converter = self.url_converter(
-                                    name, hashed_files, template
+                                    name,
+                                    hashed_files,
+                                    template,
+                                    comment_ranges=comment_ranges,
                                 )
                                 try:
                                     content = pattern.sub(converter, content)
