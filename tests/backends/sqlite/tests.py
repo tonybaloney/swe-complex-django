@@ -16,6 +16,7 @@ from django.db import (
     connections,
     transaction,
 )
+from django.db import models
 from django.db.models import Aggregate, Avg, StdDev, Sum, Variance
 from django.db.utils import ConnectionHandler
 from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
@@ -56,6 +57,10 @@ class Tests(TestCase):
         )
         with self.assertRaisesMessage(NotSupportedError, msg):
             connection.ops.check_expression_support(aggregate)
+
+    def test_distinct_string_agg_with_default_delimiter(self):
+        aggregate = models.StringAgg("first", delimiter=models.Value(","), distinct=True)
+        self.assertIsInstance(aggregate, models.StringAgg)
 
     def test_distinct_aggregation_multiple_args_no_distinct(self):
         # Aggregate functions accept multiple arguments when DISTINCT isn't

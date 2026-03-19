@@ -370,12 +370,14 @@ class StringAgg(Aggregate):
 
     def as_sqlite(self, compiler, connection, **extra_context):
         if connection.get_database_version() < (3, 44):
-            return self.as_sql(
-                compiler,
-                connection,
-                function="GROUP_CONCAT",
-                **extra_context,
-            )
+            function = "GROUP_CONCAT"
+            if self.distinct and self.delimiter.value == ",":
+                copy = self.copy()
+                copy.set_source_expressions(copy.get_source_expressions()[:-1])
+                return super(StringAgg, copy).as_sql(
+                    compiler, connection, function=function, **extra_context
+                )
+            return self.as_sql(compiler, connection, function=function, **extra_context)
 
         return self.as_sql(compiler, connection, **extra_context)
 
