@@ -1986,6 +1986,15 @@ class RedisCacheTests(BaseCacheTests, TestCase):
         self.assertEqual(pool.connection_kwargs["socket_timeout"], 0.1)
         self.assertIs(pool.connection_kwargs["retry_on_timeout"], True)
 
+    def test_redis_client_metadata(self):
+        import django
+
+        pool = cache._cache._get_connection_pool(write=False)
+        self.assertEqual(
+            pool.connection_kwargs["lib_name"],
+            f"redis-py(django_v{django.__version__})",
+        )
+
 
 class FileBasedCachePathLibTests(FileBasedCacheTests):
     def mkdtemp(self):

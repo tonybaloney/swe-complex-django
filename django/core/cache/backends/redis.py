@@ -4,6 +4,7 @@ import pickle
 import random
 import re
 
+import django
 from django.core.cache.backends.base import DEFAULT_TIMEOUT, BaseCache
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
@@ -59,7 +60,11 @@ class RedisCacheClient:
             parser_class = import_string(parser_class)
         parser_class = parser_class or self._lib.connection.DefaultParser
 
-        self._pool_options = {"parser_class": parser_class, **options}
+        self._pool_options = {
+            "parser_class": parser_class,
+            "lib_name": f"redis-py(django_v{django.__version__})",
+            **options,
+        }
 
     def _get_connection_pool_index(self, write):
         # Write to the first server. Read from other servers if there are more,
