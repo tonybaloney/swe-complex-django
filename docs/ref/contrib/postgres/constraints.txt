@@ -73,9 +73,9 @@ creates an exclusion constraint on ``circle`` using ``circle_ops``.
 
 .. attribute:: ExclusionConstraint.index_type
 
-The index type of the constraint. Accepted values are ``GIST`` or ``SPGIST``.
-Matching is case insensitive. If not provided, the default index type is
-``GIST``.
+The index type of the constraint. Accepted values are ``GIST``, ``SPGIST``, or
+``HASH``. Matching is case insensitive. If not provided, the default index type
+is ``GIST``.
 
 ``condition``
 -------------
@@ -130,7 +130,8 @@ used for queries that select only included fields
 (:attr:`~ExclusionConstraint.include`) and filter only by indexed fields
 (:attr:`~ExclusionConstraint.expressions`).
 
-``include`` is supported for GiST and SP-GiST indexes.
+``include`` is supported for GiST and SP-GiST indexes. Hash indexes don't
+support ``include``.
 
 ``violation_error_code``
 ------------------------

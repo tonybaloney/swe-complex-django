@@ -299,7 +299,10 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
             )
 
     def test_invalid_index_type(self):
-        msg = "Exclusion constraints only support GiST or SP-GiST indexes."
+        msg = (
+            "Exclusion constraints only support GiST, SP-GiST, and Hash "
+            "indexes."
+        )
         with self.assertRaisesMessage(ValueError, msg):
             ExclusionConstraint(
                 index_type="gin",
@@ -645,6 +648,30 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
                 "index_type": "SPGIST",
                 "expressions": [
                     ("datespan", RangeOperators.OVERLAPS),
+                    ("room", RangeOperators.EQUAL),
+                ],
+            },
+        )
+
+    def test_deconstruct_index_type_hash(self):
+        constraint = ExclusionConstraint(
+            name="exclude_equal",
+            index_type="HASH",
+            expressions=[
+                ("room", RangeOperators.EQUAL),
+            ],
+        )
+        path, args, kwargs = constraint.deconstruct()
+        self.assertEqual(
+            path, "django.contrib.postgres.constraints.ExclusionConstraint"
+        )
+        self.assertEqual(args, ())
+        self.assertEqual(
+            kwargs,
+            {
+                "name": "exclude_equal",
+                "index_type": "HASH",
+                "expressions": [
                     ("room", RangeOperators.EQUAL),
                 ],
             },
@@ -1244,6 +1271,18 @@ class ExclusionConstraintTests(PostgreSQLTestCase):
         with connection.schema_editor() as editor:
             editor.add_constraint(RangesModel, constraint)
         self.assertIn(constraint_name, self.get_constraints(RangesModel._meta.db_table))
+
+    def test_hash_index_type(self):
+        constraint_name = "number_equal_hash"
+        self.assertNotIn(constraint_name, self.get_constraints(Room._meta.db_table))
+        constraint = ExclusionConstraint(
+            name=constraint_name,
+            expressions=[("number", RangeOperators.EQUAL)],
+            index_type="hash",
+        )
+        with connection.schema_editor() as editor:
+            editor.add_constraint(Room, constraint)
+        self.assertIn(constraint_name, self.get_constraints(Room._meta.db_table))
 
     def test_range_equal_cast(self):
         constraint_name = "exclusion_equal_room_cast"
