@@ -789,3 +789,43 @@ class ASGITest(SimpleTestCase):
                 request = ASGIRequest(scope, None)
                 self.assertEqual(request.META["HTTP_COOKIE"], "a=abc; b=def; c=ghi")
                 self.assertEqual(request.COOKIES, {"a": "abc", "b": "def", "c": "ghi"})
+
+    @override_settings(FORCE_SCRIPT_NAME="/myapp")
+    def test_script_name_path_info_boundary(self):
+        """
+        path_info should only strip script_name at a proper path segment
+        boundary. If the path merely starts with the same characters but isn't
+        followed by '/' or end-of-string, the full path should be preserved.
+        """
+        test_cases = [
+            {
+                "path": "/myapp/page",
+                "expected_path_info": "/page",
+                "label": "proper prefix",
+            },
+            {
+                "path": "/myapp",
+                "expected_path_info": "/",
+                "label": "exact match",
+            },
+            {
+                "path": "/myapplication/page",
+                "expected_path_info": "/myapplication/page",
+                "label": "overlapping prefix not at boundary",
+            },
+            {
+                "path": "/myapp/",
+                "expected_path_info": "/",
+                "label": "prefix with trailing slash",
+            },
+        ]
+        for case in test_cases:
+            with self.subTest(case["label"]):
+                scope = self.async_request_factory._base_scope(
+                    path=case["path"],
+                )
+                request = ASGIRequest(scope, None)
+                self.assertEqual(request.path_info, case["expected_path_info"])
+                self.assertEqual(
+                    request.META["PATH_INFO"], case["expected_path_info"]
+                )
