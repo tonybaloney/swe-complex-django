@@ -154,13 +154,20 @@ class ContentTypeOperationsTests(TransactionTestCase):
     def test_content_type_rename_conflict(self):
         ContentType.objects.create(app_label="contenttypes_tests", model="foo")
         ContentType.objects.create(app_label="contenttypes_tests", model="renamedfoo")
-        call_command(
-            "migrate",
-            "contenttypes_tests",
-            database="default",
-            interactive=False,
-            verbosity=0,
+        forward_warning_message = (
+            "Couldn't rename content type for 'contenttypes_tests.foo' to "
+            "'contenttypes_tests.renamedfoo': a content type with the new "
+            "name already exists. Run 'manage.py remove_stale_contenttypes' "
+            "to resolve the conflict."
         )
+        with self.assertWarnsMessage(RuntimeWarning, forward_warning_message):
+            call_command(
+                "migrate",
+                "contenttypes_tests",
+                database="default",
+                interactive=False,
+                verbosity=0,
+            )
         self.assertTrue(
             ContentType.objects.filter(
                 app_label="contenttypes_tests", model="foo"
@@ -171,14 +178,22 @@ class ContentTypeOperationsTests(TransactionTestCase):
                 app_label="contenttypes_tests", model="renamedfoo"
             ).exists()
         )
-        call_command(
-            "migrate",
-            "contenttypes_tests",
-            "zero",
-            database="default",
-            interactive=False,
-            verbosity=0,
+        backward_warning_message = (
+            "Couldn't rename content type for "
+            "'contenttypes_tests.renamedfoo' to "
+            "'contenttypes_tests.foo': a content type with the new "
+            "name already exists. Run 'manage.py remove_stale_contenttypes' "
+            "to resolve the conflict."
         )
+        with self.assertWarnsMessage(RuntimeWarning, backward_warning_message):
+            call_command(
+                "migrate",
+                "contenttypes_tests",
+                "zero",
+                database="default",
+                interactive=False,
+                verbosity=0,
+            )
         self.assertTrue(
             ContentType.objects.filter(
                 app_label="contenttypes_tests", model="foo"
