@@ -789,3 +789,15 @@ class ASGITest(SimpleTestCase):
                 request = ASGIRequest(scope, None)
                 self.assertEqual(request.META["HTTP_COOKIE"], "a=abc; b=def; c=ghi")
                 self.assertEqual(request.COOKIES, {"a": "abc", "b": "def", "c": "ghi"})
+
+    def test_script_name_path_info(self):
+        tests = [
+            ("/myapp", "/myapp/page", "/page"),
+            ("/myapp", "/myapp", ""),
+            ("/myapp", "/myapplication/page", "/myapplication/page"),
+        ]
+        for script_name, path, expected in tests:
+            with self.subTest(script_name=script_name, path=path):
+                scope = self.async_request_factory._base_scope(path=path)
+                scope["root_path"] = script_name
+                self.assertEqual(ASGIRequest(scope, None).path_info, expected)

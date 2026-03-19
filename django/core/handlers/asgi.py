@@ -53,11 +53,11 @@ class ASGIRequest(HttpRequest):
         self.resolver_match = None
         self.path = scope["path"]
         self.script_name = get_script_prefix(scope)
-        if self.script_name:
-            # TODO: Better is-prefix checking, slash handling?
-            self.path_info = scope["path"].removeprefix(self.script_name)
-        else:
-            self.path_info = scope["path"]
+        self.path_info = self.path
+        if self.script_name and self.path.startswith(self.script_name):
+            path_info = self.path.removeprefix(self.script_name)
+            if path_info == "" or path_info.startswith("/"):
+                self.path_info = path_info
         # HTTP basics.
         self.method = self.scope["method"].upper()
         # Ensure query string is encoded correctly.
