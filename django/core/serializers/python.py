@@ -74,10 +74,15 @@ class Serializer(base.Serializer):
 
                 def queryset_iterator(obj, field):
                     attr = getattr(obj, field.name)
+                    qs = attr.all()
+                    if not qs.totally_ordered:
+                        qs = qs.order_by(
+                            *qs.query.order_by or qs.model._meta.ordering, "pk"
+                        )
                     chunk_size = (
                         2000 if getattr(attr, "prefetch_cache_name", None) else None
                     )
-                    return attr.iterator(chunk_size)
+                    return qs.iterator(chunk_size)
 
             else:
 
