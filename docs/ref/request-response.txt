@@ -98,6 +98,14 @@ All attributes should be considered read-only, unless stated otherwise.
     A dictionary of key/value parameters included in the ``CONTENT_TYPE``
     header.
 
+.. attribute:: HttpRequest.multipart_parser_class
+
+    .. versionadded:: 6.1
+
+    The class used to parse ``multipart/form-data`` request bodies. Defaults
+    to :class:`~django.http.multipartparser.MultiPartParser`. You can set this
+    attribute on a request instance or subclass to use a custom parser class.
+
 .. attribute:: HttpRequest.GET
 
     A dictionary-like object containing all given HTTP GET parameters. See the

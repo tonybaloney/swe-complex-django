@@ -13,7 +13,11 @@ from django.http import (
     RawPostDataException,
     UnreadablePostError,
 )
-from django.http.multipartparser import MAX_TOTAL_HEADER_SIZE, MultiPartParserError
+from django.http.multipartparser import (
+    MAX_TOTAL_HEADER_SIZE,
+    MultiPartParser,
+    MultiPartParserError,
+)
 from django.http.request import split_domain_port
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.test.client import BOUNDARY, MULTIPART_CONTENT, FakePayload
@@ -586,6 +590,37 @@ class RequestsTests(SimpleTestCase):
         )
         self.assertEqual(request.POST, "_POST")
         self.assertEqual(request.FILES, "_FILES")
+
+    def test_custom_multipart_parser_class(self):
+        parse_args = []
+
+        class CustomMultiPartParser(MultiPartParser):
+            def __init__(self, *args, **kwargs):
+                parse_args.append(args)
+                super().__init__(*args, **kwargs)
+
+        payload = FakePayload(
+            "\r\n".join(
+                [
+                    f"--{BOUNDARY}",
+                    'Content-Disposition: form-data; name="name"',
+                    "",
+                    "value",
+                    f"--{BOUNDARY}--",
+                ]
+            )
+        )
+        request = WSGIRequest(
+            {
+                "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": MULTIPART_CONTENT,
+                "CONTENT_LENGTH": len(payload),
+                "wsgi.input": payload,
+            }
+        )
+        request.multipart_parser_class = CustomMultiPartParser
+        self.assertEqual(request.POST["name"], "value")
+        self.assertEqual(len(parse_args), 1)
 
     def test_request_methods_with_content(self):
         for method in ["GET", "PUT", "DELETE"]:
