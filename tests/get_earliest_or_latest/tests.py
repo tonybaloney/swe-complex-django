@@ -265,3 +265,21 @@ class TestFirstLast(TestCase):
             qs.first()
         with self.assertRaisesMessage(TypeError, msg % "last"):
             qs.last()
+
+    def test_first_last_empty_order_by(self):
+        p1 = Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        p2 = Person.objects.create(name="Alice", birthday=datetime(1961, 2, 3))
+        # Explicitly calling order_by() without arguments avoids pk ordering
+        # in first()/last().
+        qs = Person.objects.order_by()
+        self.assertIn(qs.first(), {p1, p2})
+        self.assertIn(qs.last(), {p1, p2})
+        self.assertNotIn("ORDER BY", str(qs[:1].query))
+
+    def test_first_last_empty_order_by_not_propagated_to_union(self):
+        Person.objects.create(name="Bob", birthday=datetime(1950, 1, 1))
+        Person.objects.create(name="Alice", birthday=datetime(1961, 2, 3))
+        # union() resets the explicitly unordered state, so first()/last()
+        # still adds pk ordering.
+        qs = Person.objects.order_by().union(Person.objects.order_by())
+        self.assertIn("ORDER BY", str(qs.order_by("pk")[:1].query))

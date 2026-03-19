@@ -319,6 +319,7 @@ class QuerySet(AltersData):
         self._fields = None
         self._defer_next_filter = False
         self._deferred_filter = None
+        self._explicitly_unordered = False
 
     @property
     def query(self):
@@ -1160,6 +1161,8 @@ class QuerySet(AltersData):
         """Return the first object of a query or None if no match is found."""
         if self.ordered:
             queryset = self
+        elif self._explicitly_unordered:
+            queryset = self
         else:
             self._check_ordering_first_last_queryset_aggregation(method="first")
             queryset = self.order_by("pk")
@@ -1173,6 +1176,8 @@ class QuerySet(AltersData):
         """Return the last object of a query or None if no match is found."""
         if self.ordered:
             queryset = self.reverse()
+        elif self._explicitly_unordered:
+            queryset = self
         else:
             self._check_ordering_first_last_queryset_aggregation(method="last")
             queryset = self.order_by("-pk")
@@ -1679,10 +1684,12 @@ class QuerySet(AltersData):
         clone = self._chain()
         # Clear limits and ordering so they can be reapplied
         clone.query.clear_ordering(force=True)
+        clone.query.default_ordering = True
         clone.query.clear_limits()
         clone.query.combined_queries = (self.query, *(qs.query for qs in other_qs))
         clone.query.combinator = combinator
         clone.query.combinator_all = all
+        clone._explicitly_unordered = False
         return clone
 
     def union(self, *other_qs, all=False):
@@ -1858,6 +1865,7 @@ class QuerySet(AltersData):
         obj = self._chain()
         obj.query.clear_ordering(force=True, clear_default=False)
         obj.query.add_ordering(*field_names)
+        obj._explicitly_unordered = not field_names
         return obj
 
     def distinct(self, *field_names):
@@ -2088,6 +2096,7 @@ class QuerySet(AltersData):
         c._iterable_class = self._iterable_class
         c._fetch_mode = self._fetch_mode
         c._fields = self._fields
+        c._explicitly_unordered = self._explicitly_unordered
         return c
 
     def _fetch_all(self):
