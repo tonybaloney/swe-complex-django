@@ -4,6 +4,7 @@ import pickle
 import random
 import re
 
+import django
 from django.core.cache.backends.base import DEFAULT_TIMEOUT, BaseCache
 from django.utils.functional import cached_property
 from django.utils.module_loading import import_string
@@ -58,6 +59,13 @@ class RedisCacheClient:
         if isinstance(parser_class, str):
             parser_class = import_string(parser_class)
         parser_class = parser_class or self._lib.connection.DefaultParser
+
+        if "driver_info" not in options:
+            from redis.connection import DriverInfo
+
+            options["driver_info"] = DriverInfo().add_upstream_driver(
+                "django", django.get_version()
+            )
 
         self._pool_options = {"parser_class": parser_class, **options}
 
