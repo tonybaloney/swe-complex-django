@@ -110,23 +110,22 @@ class ModelIterable(BaseIterable):
             f[0].target.attname for f in select[model_fields_start:model_fields_end]
         ]
         related_populators = get_related_populators(klass_info, select, db, fetch_mode)
-        known_related_objects = [
-            (
-                field,
-                related_objs,
-                operator.attrgetter(
-                    *[
-                        (
-                            field.attname
-                            if from_field == "self"
-                            else queryset.model._meta.get_field(from_field).attname
-                        )
-                        for from_field in field.from_fields
-                    ]
-                ),
+        known_related_objects = []
+        for field, related_objs in queryset._known_related_objects.items():
+            field_attnames = [
+                field.attname
+                if from_field == "self"
+                else queryset.model._meta.get_field(from_field).attname
+                for from_field in field.from_fields
+            ]
+            known_related_objects.append(
+                (
+                    field,
+                    related_objs,
+                    operator.attrgetter(*field_attnames),
+                    field_attnames,
+                )
             )
-            for field, related_objs in queryset._known_related_objects.items()
-        ]
         peers = []
         for row in compiler.results_iter(results):
             obj = model_cls.from_db(
@@ -145,9 +144,14 @@ class ModelIterable(BaseIterable):
                     setattr(obj, attr_name, row[col_pos])
 
             # Add the known related objects to the model.
-            for field, rel_objs, rel_getter in known_related_objects:
+            for field, rel_objs, rel_getter, field_attnames in known_related_objects:
                 # Avoid overwriting objects loaded by, e.g., select_related().
                 if field.is_cached(obj):
+                    continue
+                # Skip if FK attributes are deferred to avoid N+1 queries.
+                if not all(
+                    attname in obj.__dict__ for attname in field_attnames
+                ):
                     continue
                 rel_obj_id = rel_getter(obj)
                 try:
