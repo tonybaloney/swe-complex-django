@@ -2503,10 +2503,14 @@ class ValueTests(TestCase):
     def test_compile_unresolved(self):
         # This test might need to be revisited later on if #25425 is enforced.
         compiler = Time.objects.all().query.get_compiler(connection=connection)
-        value = Value("foo")
-        self.assertEqual(value.as_sql(compiler, connection), ("%s", ["foo"]))
-        value = Value("foo", output_field=CharField())
-        self.assertEqual(value.as_sql(compiler, connection), ("%s", ["foo"]))
+        tests = [
+            (Value("foo"), ("%s", ("foo",))),
+            (Value("foo", output_field=CharField()), ("%s", ("foo",))),
+            (Value(None), ("NULL", ())),
+        ]
+        for value, expected in tests:
+            with self.subTest(value=value):
+                self.assertEqual(value.as_sql(compiler, connection), expected)
 
     def test_output_field_decimalfield(self):
         Time.objects.create()

@@ -1174,13 +1174,13 @@ class Value(Expression):
             else:
                 val = output_field.get_db_prep_value(val, connection=connection)
             if hasattr(output_field, "get_placeholder"):
-                return output_field.get_placeholder(val, compiler, connection), [val]
+                return output_field.get_placeholder(val, compiler, connection), (val,)
         if val is None:
             # oracledb does not always convert None to the appropriate
             # NULL type (like in case expressions using numbers), so we
             # use a literal SQL NULL
-            return "NULL", []
-        return "%s", [val]
+            return "NULL", ()
+        return "%s", (val,)
 
     def as_sqlite(self, compiler, connection, **extra_context):
         sql, params = self.as_sql(compiler, connection, **extra_context)
