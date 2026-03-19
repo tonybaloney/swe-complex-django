@@ -106,6 +106,18 @@ class HashedFilesMixin:
         ),
     )
     keep_intermediate_files = True
+    # Patterns to detect comments in CSS/JS files. sourceMappingURL directives
+    # are excluded via negative lookahead since they must still be processed.
+    _comment_patterns = {
+        "*.css": re.compile(
+            r"/\*(?!#[ \t]sourceMappingURL=)[\s\S]*?\*/",
+        ),
+        "*.js": re.compile(
+            r"/\*(?!#[ \t]sourceMappingURL=)[\s\S]*?\*/"
+            r"|"
+            r"//(?!#[ \t]sourceMappingURL=)[^\n]*",
+        ),
+    }
 
     def __init__(self, *args, **kwargs):
         if self.support_js_module_import_aggregation:
@@ -121,6 +133,13 @@ class HashedFilesMixin:
                     template = self.default_template
                 compiled = re.compile(pattern, re.IGNORECASE)
                 self._patterns.setdefault(extension, []).append((compiled, template))
+
+    def _get_comment_ranges(self, content, extension):
+        """Return a list of (start, end) ranges for comments in content."""
+        pattern = self._comment_patterns.get(extension)
+        if pattern is None:
+            return []
+        return [(m.start(), m.end()) for m in pattern.finditer(content)]
 
     def file_hash(self, name, content=None):
         """
@@ -377,6 +396,24 @@ class HashedFilesMixin:
                                 converter = self.url_converter(
                                     name, hashed_files, template
                                 )
+                                comment_ranges = self._get_comment_ranges(
+                                    content, extension
+                                )
+                                if comment_ranges:
+
+                                    def _comment_aware(
+                                        matchobj,
+                                        _converter=converter,
+                                        _ranges=comment_ranges,
+                                    ):
+                                        if any(
+                                            start <= matchobj.start() < end
+                                            for start, end in _ranges
+                                        ):
+                                            return matchobj.group()
+                                        return _converter(matchobj)
+
+                                    converter = _comment_aware
                                 try:
                                     content = pattern.sub(converter, content)
                                 except ValueError as exc:

@@ -77,6 +77,18 @@ class TestHashedFiles:
             self.assertIn(b"url()", content)
         self.assertPostCondition()
 
+    def test_css_comment_with_url(self):
+        relpath = self.hashed_file_path("cached/comment.css")
+        with storage.staticfiles_storage.open(relpath) as relfile:
+            content = relfile.read()
+            # URL inside single-line block comment should not be replaced.
+            self.assertIn(b'/* url("other.css") */', content)
+            # @import inside multi-line block comment should not be replaced.
+            self.assertIn(b'@import "styles.css"', content)
+            # URL outside comment should be replaced.
+            self.assertIn(b'url("other.d41d8cd98f00.css")', content)
+        self.assertPostCondition()
+
     def test_path_with_querystring(self):
         relpath = self.hashed_file_path("cached/styles.css?spam=eggs")
         self.assertEqual(relpath, "cached/styles.5e0040571e1a.css?spam=eggs")
