@@ -1182,6 +1182,17 @@ class Value(SQLiteNumericMixin, Expression):
             return "NULL", []
         return "%s", [val]
 
+    def as_sqlite(self, compiler, connection, **extra_context):
+        if isinstance(self.value, Decimal):
+            sql, params = self.as_sql(compiler, connection)
+            try:
+                if self.output_field.get_internal_type() == "DecimalField":
+                    sql = "(CAST(%s AS REAL))" % sql
+            except FieldError:
+                pass
+            return sql, params
+        return super().as_sqlite(compiler, connection, **extra_context)
+
     def resolve_expression(
         self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False
     ):
