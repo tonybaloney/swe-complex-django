@@ -73,6 +73,9 @@ class OperationWriter:
 
         imports = set()
         name, args, kwargs = self.operation.deconstruct()
+        kwargs = kwargs.copy()
+        if self.operation.elidable:
+            kwargs["elidable"] = True
         operation_args = get_func_args(self.operation.__init__)
 
         # See if this operation is in django.db.migrations. If it is,

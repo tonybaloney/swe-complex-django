@@ -213,6 +213,18 @@ class OperationWriterTests(SimpleTestCase):
             "),",
         )
 
+    def test_elidable_signature(self):
+        operation = migrations.RunSQL("SELECT 1", elidable=True)
+        buff, imports = OperationWriter(operation, indentation=0).serialize()
+        self.assertEqual(imports, set())
+        self.assertEqual(
+            buff,
+            "migrations.RunSQL(\n"
+            "    sql='SELECT 1',\n"
+            "    elidable=True,\n"
+            "),",
+        )
+
     def test_expand_args_signature(self):
         operation = custom_migration_operations.operations.ExpandArgsOperation([1, 2])
         buff, imports = OperationWriter(operation, indentation=0).serialize()
