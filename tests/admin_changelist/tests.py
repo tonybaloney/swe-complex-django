@@ -392,6 +392,11 @@ class ChangeListTests(TestCase):
             "Failed to find expected row element: %s" % table_output,
         )
 
+    def test_result_list_without_formset(self):
+        request = self.factory.get("/child/")
+        request.user = self.superuser
+        self.assertIsNone(ChildAdmin(Child, custom_site).get_changelist_instance(request).formset)
+
     def test_result_list_editable_html(self):
         """
         Regression tests for #11791: Inclusion tag result_list generates a
