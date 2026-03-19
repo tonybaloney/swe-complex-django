@@ -85,6 +85,16 @@ class BaseIterable:
         return self._async_generator()
 
 
+def _known_related_objects_attrgetter(obj, field_names):
+    values = []
+    for field_name in field_names:
+        try:
+            values.append(obj.__dict__[field_name])
+        except KeyError:
+            return None
+    return values[0] if len(values) == 1 else tuple(values)
+
+
 class ModelIterable(BaseIterable):
     """Iterable that yields a model instance for each row."""
 
@@ -114,16 +124,14 @@ class ModelIterable(BaseIterable):
             (
                 field,
                 related_objs,
-                operator.attrgetter(
-                    *[
-                        (
-                            field.attname
-                            if from_field == "self"
-                            else queryset.model._meta.get_field(from_field).attname
-                        )
-                        for from_field in field.from_fields
-                    ]
-                ),
+                [
+                    (
+                        field.attname
+                        if from_field == "self"
+                        else queryset.model._meta.get_field(from_field).attname
+                    )
+                    for from_field in field.from_fields
+                ],
             )
             for field, related_objs in queryset._known_related_objects.items()
         ]
@@ -149,7 +157,9 @@ class ModelIterable(BaseIterable):
                 # Avoid overwriting objects loaded by, e.g., select_related().
                 if field.is_cached(obj):
                     continue
-                rel_obj_id = rel_getter(obj)
+                rel_obj_id = _known_related_objects_attrgetter(obj, rel_getter)
+                if rel_obj_id is None:
+                    continue
                 try:
                     rel_obj = rel_objs[rel_obj_id]
                 except KeyError:
