@@ -237,6 +237,16 @@ class Serializer:
         except AttributeError:
             return False
 
+    @staticmethod
+    def _ensure_total_ordering(qs):
+        """Ensure the queryset has a deterministic ordering by appending pk."""
+        if qs.totally_ordered:
+            return qs
+        ordering = qs.query.order_by
+        if not ordering and qs.query.default_ordering:
+            ordering = qs.query.get_meta().ordering or ()
+        return qs.order_by(*ordering, "pk")
+
 
 class Deserializer:
     """
