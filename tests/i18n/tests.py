@@ -728,14 +728,26 @@ class FormattingTests(SimpleTestCase):
             self.assertEqual(
                 "31/12/2009 20:50", date_format(self.dt, "SHORT_DATETIME_FORMAT")
             )
+
+        with translation.override("eu", deactivate=True):
+            self.assertEqual("2009(e)ko abe.k 31", date_format(self.d))
+            self.assertEqual("2009(e)ko api.k 1", date_format(datetime.date(2009, 4, 1)))
+            self.assertEqual("2009(e)ko abendua", date_format(self.d, "YEAR_MONTH_FORMAT"))
+            self.assertEqual("abenduaren 31a", date_format(self.d, "MONTH_DAY_FORMAT"))
+            self.assertEqual(
+                "2009(e)ko abe.k 31, 20:50",
+                date_format(self.dt, "DATETIME_FORMAT"),
+            )
             self.assertEqual("No localizable", localize("No localizable"))
 
+        with translation.override("eu", deactivate=True):
             with self.settings(USE_THOUSAND_SEPARATOR=True):
                 self.assertEqual("66.666,666", localize(self.n))
                 self.assertEqual("99.999,999", localize(self.f))
                 self.assertEqual("10.000", localize(self.long))
                 self.assertEqual("True", localize(True))
 
+        with translation.override("ca", deactivate=True):
             with self.settings(USE_THOUSAND_SEPARATOR=False):
                 self.assertEqual("66666,666", localize(self.n))
                 self.assertEqual("99999,999", localize(self.f))
