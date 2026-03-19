@@ -839,7 +839,6 @@ class ChangeListTests(TestCase):
 
     def test_custom_lookup_with_pk_shortcut(self):
         self.assertEqual(CharPK._meta.pk.name, "char_pk")  # Not equal to 'pk'.
-        m = admin.ModelAdmin(CustomIdUser, custom_site)
 
         abc = CharPK.objects.create(char_pk="abc")
         abcd = CharPK.objects.create(char_pk="abcd")
@@ -875,6 +874,7 @@ class ChangeListTests(TestCase):
                 with self.assertNumQueries(3):
                     cl = model_admin.get_changelist_instance(request)
                 self.assertCountEqual(cl.queryset, expected_result)
+                self.assertNotIn("CAST(", str(cl.queryset.query))
 
     def test_search_with_exact_lookup_relationship_field(self):
         child = Child.objects.create(name="I am a child", age=11)
@@ -885,6 +885,7 @@ class ChangeListTests(TestCase):
         request.user = self.superuser
         cl = model_admin.get_changelist_instance(request)
         self.assertCountEqual(cl.queryset, [grandchild])
+        self.assertNotIn("CAST(", str(cl.queryset.query))
         for search_term, expected_result in [
             ("11", [grandchild]),
             ("'I am a child'", [grandchild]),
