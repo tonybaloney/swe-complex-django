@@ -276,12 +276,18 @@ class HashedFilesMixin:
 
             # Determine the hashed name of the target file with the storage
             # backend.
-            hashed_url = self._url(
-                self._stored_name,
-                unquote(target_name),
-                force=True,
-                hashed_files=hashed_files,
-            )
+            try:
+                hashed_url = self._url(
+                    self._stored_name,
+                    unquote(target_name),
+                    force=True,
+                    hashed_files=hashed_files,
+                )
+            except ValueError as exc:
+                line_number = matchobj.string[: matchobj.start()].count("\n") + 1
+                raise ValueError(
+                    "%s Referenced from '%s', line %d." % (exc, name, line_number)
+                ) from exc
 
             transformed_url = "/".join(
                 url_path.split("/")[:-1] + hashed_url.split("/")[-1:]

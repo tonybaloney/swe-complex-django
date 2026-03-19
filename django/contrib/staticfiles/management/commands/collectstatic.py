@@ -154,6 +154,8 @@ class Command(BaseCommand):
                     # Add a blank line before the traceback, otherwise it's
                     # too easy to miss the relevant part of the error message.
                     self.stderr.write()
+                    if type(processed) is ValueError:
+                        raise CommandError(processed) from processed
                     raise processed
                 if processed:
                     self.log(
