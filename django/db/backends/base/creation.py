@@ -359,6 +359,7 @@ class BaseDatabaseCreation:
         database and test which should be skipped on this database.
         """
         # Only load unittest if we're actually testing.
+        from importlib import import_module
         from unittest import expectedFailure, skip
 
         for test_name in self.connection.features.django_test_expected_failures:
@@ -376,7 +377,10 @@ class BaseDatabaseCreation:
                 # Importing a test app that isn't installed raises
                 # RuntimeError.
                 if test_app in settings.INSTALLED_APPS:
-                    test_case = import_string(test_case_name)
+                    try:
+                        test_case = import_string(test_case_name)
+                    except ImportError:
+                        test_case = import_module(test_case_name)
                     test_method = getattr(test_case, test_method_name)
                     setattr(test_case, test_method_name, skip(reason)(test_method))
 

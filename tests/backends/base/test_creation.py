@@ -1,6 +1,8 @@
 import copy
 import datetime
 import os
+import sys
+from importlib import import_module
 from unittest import mock
 
 from django.db import DEFAULT_DB_ALIAS, connection, connections
@@ -346,5 +348,29 @@ class TestMarkTests(SimpleTestCase):
         self.assertIs(skip_test_function.__unittest_skip__, True)
         self.assertEqual(
             skip_test_function.__unittest_skip_why__,
+            "skip test function",
+        )
+
+    def test_mark_skips_imports_test_modules(self):
+        """
+        Module paths in django_test_skips are imported before attribute lookup.
+        """
+        test_connection = get_connection_copy()
+        creation = BaseDatabaseCreation(test_connection)
+        creation.connection.features.django_test_skips = {
+            "skip test function": {
+                "backends.base.test_creation.skip_test_function",
+            },
+        }
+        sys.modules.pop("backends.base", None)
+        sys.modules.pop("backends.base.test_creation", None)
+        import_module("backends")
+
+        creation.mark_expected_failures_and_skips()
+
+        reloaded_test_module = sys.modules["backends.base.test_creation"]
+        self.assertIs(reloaded_test_module.skip_test_function.__unittest_skip__, True)
+        self.assertEqual(
+            reloaded_test_module.skip_test_function.__unittest_skip_why__,
             "skip test function",
         )
