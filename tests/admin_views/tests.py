@@ -589,6 +589,23 @@ class AdminViewBasicTest(AdminViewBasicTestCase):
         self.assertIn("admin_views.nonexistent", str(messages[0]))
         self.assertIn("could not be found", str(messages[0]))
 
+    def test_popup_add_POST_with_unregistered_source_model(self):
+        """
+        Popup add with a source_model that exists but is not registered
+        with the admin site doesn't crash with a KeyError.
+        """
+        post_data = {
+            IS_POPUP_VAR: "1",
+            SOURCE_MODEL_VAR: "admin_views.toy",
+            "title": "Test Article",
+            "content": "some content",
+            "date_0": "2010-09-10",
+            "date_1": "14:55:39",
+        }
+        response = self.client.post(reverse("admin:admin_views_article_add"), post_data)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-popup-response")
+
     def test_basic_edit_POST(self):
         """
         A smoke test to ensure POST on edit_view works.
