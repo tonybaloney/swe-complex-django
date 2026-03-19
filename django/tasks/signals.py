@@ -49,6 +49,9 @@ def log_task_started(sender, task_result, **kwargs):
 
 @receiver(task_finished)
 def log_task_finished(sender, task_result, **kwargs):
+    # Signal is sent inside exception handlers, so exc_info() is available.
+    # Pass the exception type: truthy triggers logging to capture exc_info,
+    # None (no active exception) is falsy and skips "NoneType: None" output.
     logger.log(
         (
             logging.ERROR
@@ -59,6 +62,5 @@ def log_task_finished(sender, task_result, **kwargs):
         task_result.id,
         task_result.task.module_path,
         task_result.status,
-        # Signal is sent inside exception handlers, so exc_info() is available.
-        exc_info=sys.exc_info(),
+        exc_info=sys.exc_info()[0],
     )
