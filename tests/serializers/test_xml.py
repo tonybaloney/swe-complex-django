@@ -1,6 +1,7 @@
 from xml.dom import minidom
 
 from django.core import serializers
+from django.core.exceptions import SuspiciousOperation
 from django.core.serializers.xml_serializer import DTDForbidden
 from django.test import TestCase, TransactionTestCase
 
@@ -88,6 +89,17 @@ class XmlSerializerTestCase(SerializersTestBase, TestCase):
             '<!DOCTYPE example SYSTEM "http://example.com/example.dtd">'
         )
         with self.assertRaises(DTDForbidden):
+            next(serializers.deserialize("xml", xml))
+
+    def test_unexpected_nested_tag(self):
+        xml = """<?xml version="1.0" encoding="utf-8"?>
+<django-objects version="1.0">
+    <object model="serializers.category" pk="1">
+        <field type="CharField" name="name"><unexpected>Reference</unexpected></field>
+    </object>
+</django-objects>"""
+        msg = "Unexpected nested tag <unexpected> found in <field>."
+        with self.assertRaisesMessage(SuspiciousOperation, msg):
             next(serializers.deserialize("xml", xml))
 
 
