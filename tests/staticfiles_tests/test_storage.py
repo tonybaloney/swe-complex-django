@@ -13,7 +13,7 @@ from django.contrib.staticfiles import finders, storage
 from django.contrib.staticfiles.management.commands.collectstatic import (
     Command as CollectstaticCommand,
 )
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import SimpleTestCase, override_settings
 
 from .cases import CollectionTestCase
@@ -367,8 +367,18 @@ class TestHashedFiles:
         """
         finders.get_finder.cache_clear()
         err = StringIO()
-        with self.assertRaises(Exception):
-            call_command("collectstatic", interactive=False, verbosity=0, stderr=err)
+        msg = (
+            "The file 'missing.css' could not be found with <"
+            "django.contrib.staticfiles.storage.ManifestStaticFilesStorage object at "
+        )
+        with self.assertRaisesMessage(CommandError, msg):
+            call_command(
+                "collectstatic",
+                interactive=False,
+                verbosity=0,
+                stderr=err,
+                post_process=True,
+            )
         self.assertEqual("Post-processing 'faulty.css' failed!\n\n", err.getvalue())
         self.assertPostCondition()
 

@@ -154,6 +154,21 @@ class Command(BaseCommand):
                     # Add a blank line before the traceback, otherwise it's
                     # too easy to miss the relevant part of the error message.
                     self.stderr.write()
+                    missing_file = self.get_missing_file_error(processed)
+                    if missing_file:
+                        raise CommandError(
+                            "".join(
+                                [
+                                    "%s\n\n" % processed,
+                                    "The failure occurred in '%s'." % original_path,
+                                    (
+                                        "\nFind the reference to '%s' in '%s' and "
+                                        "check that it exists."
+                                    )
+                                    % (missing_file, original_path),
+                                ]
+                            )
+                        ) from processed
                     raise processed
                 if processed:
                     self.log(
@@ -171,6 +186,14 @@ class Command(BaseCommand):
             "skipped": self.skipped_files,
             "deleted": self.deleted_files,
         }
+
+    def get_missing_file_error(self, exception):
+        if not isinstance(exception, ValueError) or not exception.args:
+            return None
+        message = exception.args[0]
+        if not message.startswith("The file '"):
+            return None
+        return message.split("'", 2)[1]
 
     def handle(self, **options):
         self.set_options(**options)
