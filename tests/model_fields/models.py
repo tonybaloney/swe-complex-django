@@ -104,6 +104,10 @@ class BigD(models.Model):
     d = models.DecimalField(max_digits=32, decimal_places=30)
 
 
+class BigIntDecimal(models.Model):
+    d = models.DecimalField(max_digits=18, decimal_places=0)
+
+
 class FloatModel(models.Model):
     size = models.FloatField()
 
