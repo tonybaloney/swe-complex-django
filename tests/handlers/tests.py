@@ -338,6 +338,31 @@ class AsyncHandlerRequestTests(SimpleTestCase):
         self.assertEqual(request.script_name, "/root")
         self.assertEqual(request.path_info, "/somepath/")
 
+    def test_root_path_no_path_boundary(self):
+        """
+        A root_path that is a string prefix of path but not a proper path
+        segment boundary should not be stripped from path_info.
+        """
+        async_request_factory = AsyncRequestFactory()
+        request = async_request_factory.request(
+            **{"path": "/myapplication/page", "root_path": "/myapp"}
+        )
+        self.assertEqual(request.path, "/myapplication/page")
+        self.assertEqual(request.script_name, "/myapp")
+        self.assertEqual(request.path_info, "/myapplication/page")
+
+    def test_root_path_exact_match(self):
+        """
+        When root_path is exactly the path, path_info should be '/'.
+        """
+        async_request_factory = AsyncRequestFactory()
+        request = async_request_factory.request(
+            **{"path": "/myapp", "root_path": "/myapp"}
+        )
+        self.assertEqual(request.path, "/myapp")
+        self.assertEqual(request.script_name, "/myapp")
+        self.assertEqual(request.path_info, "/")
+
     @override_settings(FORCE_SCRIPT_NAME="/FORCED_PREFIX")
     def test_force_script_name(self):
         async_request_factory = AsyncRequestFactory()
