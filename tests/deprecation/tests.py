@@ -23,6 +23,14 @@ class DjangoFilePrefixesTests(SimpleTestCase):
         finally:
             django.__file__ = orig_file
 
+    def test_none_file(self):
+        orig_file = django.__file__
+        try:
+            django.__file__ = None
+            self.assertEqual(django_file_prefixes(), ())
+        finally:
+            django.__file__ = orig_file
+
     def test_with_file(self):
         prefixes = django_file_prefixes()
         self.assertIsInstance(prefixes, tuple)
