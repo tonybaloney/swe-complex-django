@@ -773,6 +773,20 @@ class BaseReloaderTests(ReloaderTests):
         thread.is_alive.return_value = True
         self.assertTrue(self.reloader.wait_for_apps_ready(app_reg, thread))
 
+    def test_run_preserves_urlconf_exception_cause(self):
+        django_main_thread = mock.MagicMock()
+        resolver = mock.MagicMock()
+        type(resolver).urlconf_module = mock.PropertyMock(
+            side_effect=ValueError("URLconf failure")
+        )
+        with mock.patch("django.urls.get_resolver", return_value=resolver):
+            with mock.patch.object(self.reloader, "wait_for_apps_ready", return_value=True):
+                with mock.patch.object(self.reloader, "run_loop"):
+                    with self.assertRaises(RuntimeError) as cm:
+                        self.reloader.run(django_main_thread)
+        self.assertIsInstance(cm.exception.__cause__, ValueError)
+        self.assertEqual(cm.exception.__cause__.args[0], "URLconf failure")
+
 
 def skip_unless_watchman_available():
     try:

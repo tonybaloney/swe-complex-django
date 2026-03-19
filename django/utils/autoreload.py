@@ -347,9 +347,13 @@ class BaseReloader:
         # reloader starts by accessing the urlconf_module property.
         try:
             get_resolver().urlconf_module
-        except Exception:
+        except Exception as e:
             # Loading the urlconf can result in errors during development.
             # If this occurs then swallow the error and continue.
+            raise RuntimeError from e
+        except RuntimeError:
+            # Fall through to preserve the original exception for the
+            # development server.
             pass
         logger.debug("Apps ready_event triggered. Sending autoreload_started signal.")
         autoreload_started.send(sender=self)
