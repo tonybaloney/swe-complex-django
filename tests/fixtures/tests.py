@@ -1328,6 +1328,56 @@ class ForwardReferenceTests(DumpDataAssertMixin, TestCase):
             natural_foreign_keys=True,
         )
 
+    def test_m2m_natural_key_deterministic_ordering(self):
+        t1 = NaturalKeyThing.objects.create(key="t1")
+        t2 = NaturalKeyThing.objects.create(key="t2")
+        t3 = NaturalKeyThing.objects.create(key="t3")
+        t1.other_things.set([t3, t2])
+
+        self._dumpdata_assert(
+            ["fixtures.naturalkeything"],
+            '[{"model": "fixtures.naturalkeything", '
+            '"fields": {"key": "t1", "other_thing": null, '
+            '"other_things": [["t2"], ["t3"]]}}, '
+            '{"model": "fixtures.naturalkeything", '
+            '"fields": {"key": "t2", "other_thing": null, "other_things": []}}, '
+            '{"model": "fixtures.naturalkeything", '
+            '"fields": {"key": "t3", "other_thing": null, "other_things": []}}]',
+            natural_primary_keys=True,
+            natural_foreign_keys=True,
+        )
+        self._dumpdata_assert(
+            ["fixtures.naturalkeything"],
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<django-objects version="1.0">'
+            '<object model="fixtures.naturalkeything">'
+            '<field type="CharField" name="key">t1</field>'
+            '<field to="fixtures.naturalkeything" name="other_thing"'
+            ' rel="ManyToOneRel"><None /></field>'
+            '<field to="fixtures.naturalkeything" name="other_things"'
+            ' rel="ManyToManyRel">'
+            "<object><natural>t2</natural></object>"
+            "<object><natural>t3</natural></object></field>"
+            "</object>"
+            '<object model="fixtures.naturalkeything">'
+            '<field type="CharField" name="key">t2</field>'
+            '<field to="fixtures.naturalkeything" name="other_thing"'
+            ' rel="ManyToOneRel"><None /></field>'
+            '<field to="fixtures.naturalkeything" name="other_things"'
+            ' rel="ManyToManyRel"></field>'
+            "</object>"
+            '<object model="fixtures.naturalkeything">'
+            '<field type="CharField" name="key">t3</field>'
+            '<field to="fixtures.naturalkeything" name="other_thing"'
+            ' rel="ManyToOneRel"><None /></field>'
+            '<field to="fixtures.naturalkeything" name="other_things"'
+            ' rel="ManyToManyRel"></field>'
+            "</object></django-objects>",
+            format="xml",
+            natural_primary_keys=True,
+            natural_foreign_keys=True,
+        )
+
 
 class CircularReferenceTests(DumpDataAssertMixin, TestCase):
     def test_circular_reference(self):
