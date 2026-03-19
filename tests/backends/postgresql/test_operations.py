@@ -2,6 +2,8 @@ import unittest
 
 from django.core.management.color import no_style
 from django.db import connection
+from django.db.backends.postgresql.features import SERVER_SIDE_BINDING_MAX_QUERY_PARAMS
+from django.db.backends.postgresql.psycopg_any import is_psycopg3
 from django.db.models.expressions import Col
 from django.db.models.functions import Cast
 from django.test import SimpleTestCase
@@ -78,3 +80,7 @@ class PostgreSQLOperationsTests(SimpleTestCase):
         self.assertEqual(
             rhs_expr, Cast(Col(book_table, book_fk_field), author_id_field)
         )
+
+    def test_max_query_params(self):
+        expected = SERVER_SIDE_BINDING_MAX_QUERY_PARAMS if is_psycopg3 else None
+        self.assertEqual(connection.features.max_query_params, expected)

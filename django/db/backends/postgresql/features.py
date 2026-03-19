@@ -6,6 +6,9 @@ from django.db.backends.postgresql.psycopg_any import is_psycopg3
 from django.utils.functional import cached_property
 
 
+SERVER_SIDE_BINDING_MAX_QUERY_PARAMS = 65535
+
+
 class DatabaseFeatures(BaseDatabaseFeatures):
     minimum_database_version = (15,)
     allows_group_by_selected_pks = True
@@ -150,6 +153,12 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     def uses_server_side_binding(self):
         options = self.connection.settings_dict["OPTIONS"]
         return is_psycopg3 and options.get("server_side_binding") is True
+
+    max_query_params = property(
+        lambda self: SERVER_SIDE_BINDING_MAX_QUERY_PARAMS
+        if self.uses_server_side_binding
+        else None
+    )
 
     @cached_property
     def prohibits_null_characters_in_text_exception(self):
