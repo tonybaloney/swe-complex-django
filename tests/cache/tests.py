@@ -15,6 +15,8 @@ from functools import wraps
 from pathlib import Path
 from unittest import mock, skipIf
 
+from django import __version__ as django_version
+
 from django.conf import settings
 from django.core import management, signals
 from django.core.cache import (
@@ -1985,6 +1987,13 @@ class RedisCacheTests(BaseCacheTests, TestCase):
         self.assertEqual(pool.connection_kwargs["db"], 5)
         self.assertEqual(pool.connection_kwargs["socket_timeout"], 0.1)
         self.assertIs(pool.connection_kwargs["retry_on_timeout"], True)
+
+    def test_redis_connection_metadata(self):
+        pool = cache._cache._get_connection_pool(write=False)
+        self.assertEqual(
+            pool.connection_kwargs["lib_name"],
+            f"redis-py(django_v{django_version})",
+        )
 
 
 class FileBasedCachePathLibTests(FileBasedCacheTests):

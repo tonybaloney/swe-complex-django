@@ -60,6 +60,10 @@ class RedisCacheClient:
         parser_class = parser_class or self._lib.connection.DefaultParser
 
         self._pool_options = {"parser_class": parser_class, **options}
+        self._pool_options.setdefault(
+            "lib_name",
+            "redis-py(django_v%s)" % self._lib.__version__,
+        )
 
     def _get_connection_pool_index(self, write):
         # Write to the first server. Read from other servers if there are more,
