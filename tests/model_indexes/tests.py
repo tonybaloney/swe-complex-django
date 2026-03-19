@@ -168,6 +168,15 @@ class SimpleIndexesTests(SimpleTestCase):
         with self.assertRaisesMessage(ValueError, msg):
             models.Index(name="test_include", fields=["field"], include="other")
 
+    def test_include_strings(self):
+        msg = "Index.include must contain only strings with field names."
+        with self.assertRaisesMessage(ValueError, msg):
+            models.Index(
+                name="test_include",
+                fields=["field"],
+                include=[models.F("other")],
+            )
+
     def test_include_requires_index_name(self):
         msg = "A covering index must be named."
         with self.assertRaisesMessage(ValueError, msg):

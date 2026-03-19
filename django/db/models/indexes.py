@@ -63,6 +63,10 @@ class Index:
             raise ValueError("A covering index must be named.")
         if not isinstance(include, (NoneType, list, tuple)):
             raise ValueError("Index.include must be a list or tuple.")
+        if include and not all(isinstance(field, str) for field in include):
+            raise ValueError(
+                "Index.include must contain only strings with field names."
+            )
         self.fields = list(fields)
         # A list of 2-tuple with the field name and ordering ('' or 'DESC').
         self.fields_orders = [
