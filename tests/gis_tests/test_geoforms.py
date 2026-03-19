@@ -544,3 +544,12 @@ class GeometryWidgetTests(SimpleTestCase):
         form = PointForm(data={"p": point.json})
         self.assertTrue(form.is_valid())
         self.assertEqual(form.cleaned_data["p"].srid, 4326)
+
+    def test_invalid_values(self):
+        invalid_values = [
+            "POINT(longlat)",
+            '{"type": "Point", "coordinates": []}',
+        ]
+        for value in invalid_values:
+            with self.subTest(value=value):
+                self.assertIsNone(BaseGeometryWidget().deserialize(value))
