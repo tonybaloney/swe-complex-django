@@ -237,6 +237,12 @@ class Serializer:
         except AttributeError:
             return False
 
+    def _get_m2m_queryset(self, obj, field):
+        queryset = getattr(obj, field.name).all()
+        if queryset.totally_ordered:
+            return queryset
+        return queryset.order_by(*queryset.query.order_by, "pk")
+
 
 class Deserializer:
     """

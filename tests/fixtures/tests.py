@@ -1327,6 +1327,30 @@ class ForwardReferenceTests(DumpDataAssertMixin, TestCase):
             natural_primary_keys=True,
             natural_foreign_keys=True,
         )
+        self._dumpdata_assert(
+            ["fixtures"],
+            '<?xml version="1.0" encoding="utf-8"?><django-objects version="1.0">'
+            '<object model="fixtures.naturalkeything">'
+            '<field type="CharField" name="key">t1</field>'
+            '<field to="fixtures.naturalkeything" name="other_thing" rel="ManyToOneRel">'
+            '<None/></field>'
+            '<field to="fixtures.naturalkeything" name="other_things" rel="ManyToManyRel">'
+            '<object><natural>t2</natural></object><object><natural>t3</natural></object>'
+            '</field></object>'
+            '<object model="fixtures.naturalkeything">'
+            '<field type="CharField" name="key">t2</field>'
+            '<field to="fixtures.naturalkeything" name="other_thing" rel="ManyToOneRel">'
+            '<None/></field><field to="fixtures.naturalkeything" name="other_things" '
+            'rel="ManyToManyRel"></field></object>'
+            '<object model="fixtures.naturalkeything">'
+            '<field type="CharField" name="key">t3</field>'
+            '<field to="fixtures.naturalkeything" name="other_thing" rel="ManyToOneRel">'
+            '<None/></field><field to="fixtures.naturalkeything" name="other_things" '
+            'rel="ManyToManyRel"></field></object></django-objects>',
+            format="xml",
+            natural_primary_keys=True,
+            natural_foreign_keys=True,
+        )
 
 
 class CircularReferenceTests(DumpDataAssertMixin, TestCase):
