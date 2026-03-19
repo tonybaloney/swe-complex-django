@@ -876,6 +876,15 @@ class ChangeListTests(TestCase):
                     cl = model_admin.get_changelist_instance(request)
                 self.assertCountEqual(cl.queryset, expected_result)
 
+     def test_search_with_invalid_exact_lookup_value_skips_query(self):
+        model_admin = ChildAdmin(Child, custom_site)
+        request = self.factory.get("/", data={SEARCH_VAR: "abc"})
+        request.user = self.superuser
+        cl = model_admin.get_changelist_instance(request)
+
+        self.assertCountEqual(cl.queryset, [])
+        self.assertNotIn("CAST(", str(cl.queryset.query))
+
     def test_search_with_exact_lookup_relationship_field(self):
         child = Child.objects.create(name="I am a child", age=11)
         grandchild = GrandChild.objects.create(name="I am a grandchild", parent=child)
