@@ -1844,6 +1844,15 @@ class ExpressionOperatorTests(TestCase):
             Number.objects.get(pk=self.n.pk).float, Approximate(2.755, places=3)
         )
 
+    def test_decimal_division_literal_value(self):
+        self.assertEqual(
+            Number.objects.annotate(
+                result=Value(Decimal("1"))
+                / Value(Decimal("3"), output_field=DecimalField())
+            ).first().result,
+            Decimal("0.333333333333333"),
+        )
+
     def test_right_hand_modulo(self):
         # RH Modulo arithmetic on integers
         Number.objects.filter(pk=self.n.pk).update(integer=69 % F("integer"))

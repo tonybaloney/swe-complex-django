@@ -1141,7 +1141,7 @@ class Func(SQLiteNumericMixin, Expression):
 
 
 @deconstructible(path="django.db.models.Value")
-class Value(SQLiteNumericMixin, Expression):
+class Value(Expression):
     """Represent a wrapped value as a node within an expression."""
 
     # Provide a default value for `for_save` in order to allow unresolved
@@ -1188,6 +1188,14 @@ class Value(SQLiteNumericMixin, Expression):
         c = super().resolve_expression(query, allow_joins, reuse, summarize, for_save)
         c.for_save = for_save
         return c
+
+    def as_sqlite(self, compiler, connection):
+        sql, params = self.as_sql(compiler, connection)
+        if not isinstance(self.value, Decimal) and isinstance(
+            self.output_field, fields.DecimalField
+        ):
+            sql = "(CAST(%s AS NUMERIC))" % sql
+        return sql, params
 
     def get_group_by_cols(self):
         return []
