@@ -1174,13 +1174,13 @@ class Value(Expression):
             else:
                 val = output_field.get_db_prep_value(val, connection=connection)
             if hasattr(output_field, "get_placeholder"):
-                return output_field.get_placeholder(val, compiler, connection), [val]
+                return output_field.get_placeholder(val, compiler, connection), (val,)
         if val is None:
             # oracledb does not always convert None to the appropriate
             # NULL type (like in case expressions using numbers), so we
             # use a literal SQL NULL
-            return "NULL", []
-        return "%s", [val]
+            return "NULL", ()
+        return "%s", (val,)
 
     def as_sqlite(self, compiler, connection, **extra_context):
         sql, params = self.as_sql(compiler, connection, **extra_context)
@@ -1273,7 +1273,7 @@ class Star(Expression):
         return "'*'"
 
     def as_sql(self, compiler, connection):
-        return "*", []
+        return "*", ()
 
 
 class DatabaseDefault(Expression):
@@ -1313,7 +1313,7 @@ class DatabaseDefault(Expression):
     def as_sql(self, compiler, connection):
         if not connection.features.supports_default_keyword_in_insert:
             return compiler.compile(self.expression)
-        return "DEFAULT", []
+        return "DEFAULT", ()
 
 
 class Col(Expression):
@@ -1447,7 +1447,7 @@ class Ref(Expression):
         return clone
 
     def as_sql(self, compiler, connection):
-        return connection.ops.quote_name(self.refs), []
+        return connection.ops.quote_name(self.refs), ()
 
     def get_group_by_cols(self):
         return [self]
