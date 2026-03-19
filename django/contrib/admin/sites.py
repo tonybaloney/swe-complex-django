@@ -170,7 +170,8 @@ class AdminSite:
         try:
             return self._registry[model]
         except KeyError:
-            raise NotRegistered(f"The model {model.__name__} is not registered.")
+            name = model if isinstance(model, str) else model.__name__
+            raise NotRegistered(f"The model {name} is not registered.")
 
     def add_action(self, action, name=None):
         """
