@@ -1555,6 +1555,13 @@ class AliasTests(TestCase):
         else:
             self.assertEqual(qs.first()["name"], self.b1.name)
 
+    def test_values_after_values_alias_error(self):
+        msg = "Cannot select the 'other_rating' alias. Use annotate() to promote it."
+        with self.assertRaisesMessage(FieldError, msg):
+            Book.objects.values("id", "name").alias(
+                other_rating=F("rating") - 1,
+            ).values("other_rating")
+
     def test_values_wrong_alias(self):
         expected_message = (
             "Cannot resolve keyword 'alias_typo' into field. Choices are: %s"

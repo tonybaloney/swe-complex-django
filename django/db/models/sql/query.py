@@ -2595,6 +2595,11 @@ class Query(BaseExpression):
                         # `f` is not resolvable.
                         if self.annotation_select:
                             self.names_to_path(f.split(LOOKUP_SEP), self.model._meta)
+                        elif f in self.annotations:
+                            raise FieldError(
+                                f"Cannot select the '{f}' alias. Use annotate() to "
+                                "promote it."
+                            )
                         selected[f] = len(field_names)
                         field_names.append(f)
             self.set_extra_mask(extra_names)
