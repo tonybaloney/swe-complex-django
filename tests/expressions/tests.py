@@ -1661,6 +1661,14 @@ class ExpressionsNumericTests(TestCase):
             Number.objects.get(pk=n.pk).float, Approximate(256.900, places=3)
         )
 
+    def test_decimal_division_literal_value(self):
+        self.assertEqual(
+            Number.objects.annotate(
+                value=Value(Decimal("1")) / Value(Decimal("3"), output_field=DecimalField()),
+            ).first().value,
+            Decimal("0.333333333333333"),
+        )
+
     def test_decimal_expression(self):
         n = Number.objects.create(integer=1, decimal_value=Decimal("0.5"))
         n.decimal_value = F("decimal_value") - Decimal("0.4")
