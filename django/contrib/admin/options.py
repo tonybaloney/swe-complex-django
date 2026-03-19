@@ -1417,18 +1417,19 @@ class ModelAdmin(BaseModelAdmin):
                 "obj": str(obj),
             }
 
-            # Find the optgroup for the new item, if available
+            # Find the optgroup for the new item, if available.
             source_model_name = request.POST.get(SOURCE_MODEL_VAR)
-
             if source_model_name:
                 app_label, model_name = source_model_name.split(".", 1)
                 try:
                     source_model = apps.get_model(app_label, model_name)
+                    source_admin = self.admin_site._registry[source_model]
                 except LookupError:
                     msg = _('The app "%s" could not be found.') % source_model_name
                     self.message_user(request, msg, messages.ERROR)
+                except KeyError:
+                    pass
                 else:
-                    source_admin = self.admin_site._registry[source_model]
                     form = source_admin.get_form(request)()
                     if self.opts.verbose_name_plural in form.fields:
                         field = form.fields[self.opts.verbose_name_plural]
