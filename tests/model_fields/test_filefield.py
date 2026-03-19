@@ -13,7 +13,7 @@ from django.db import IntegrityError, models
 from django.test import TestCase, override_settings
 from django.test.utils import isolate_apps
 
-from .models import Document
+from .models import Document, DocumentWithAutoNowAdd
 
 
 class FileFieldTests(TestCase):
@@ -209,3 +209,13 @@ class FileFieldTests(TestCase):
 
         document = MyDocument(myfile="test_file.py")
         self.assertEqual(document.myfile.field.model, MyDocument)
+
+    def test_upload_to_with_auto_now_add(self):
+        """
+        auto_now_add fields should be set before FileField.upload_to is
+        called during insert (#36847).
+        """
+        f = ContentFile(b"content", name="test.txt")
+        doc = DocumentWithAutoNowAdd.objects.create(myfile=f)
+        self.assertIsNotNone(doc.created)
+        self.assertIn(str(doc.created.date()), doc.myfile.name)
