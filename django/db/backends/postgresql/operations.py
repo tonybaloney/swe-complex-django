@@ -1,7 +1,9 @@
 import json
 from functools import lru_cache, partial
+from itertools import chain
 
 from django.conf import settings
+from django.db import models
 from django.db.backends.base.operations import BaseDatabaseOperations
 from django.db.backends.postgresql.compiler import InsertUnnest
 from django.db.backends.postgresql.psycopg_any import (
@@ -149,6 +151,26 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     def deferrable_sql(self):
         return " DEFERRABLE INITIALLY DEFERRED"
+
+    def bulk_batch_size(self, fields, objs):
+        """
+        PostgreSQL restricts the number of parameters in a query when
+        server-side binding is used.
+        """
+        if self.connection.features.max_query_params:
+            fields = list(
+                chain.from_iterable(
+                    (
+                        field.fields
+                        if isinstance(field, models.CompositePrimaryKey)
+                        else [field]
+                    )
+                    for field in fields
+                )
+            )
+            if fields:
+                return self.connection.features.max_query_params // len(fields)
+        return len(objs)
 
     def bulk_insert_sql(self, fields, placeholder_rows):
         if isinstance(placeholder_rows, InsertUnnest):
