@@ -370,11 +370,20 @@ class StringAgg(Aggregate):
 
     def as_sqlite(self, compiler, connection, **extra_context):
         if connection.get_database_version() < (3, 44):
-            return self.as_sql(
-                compiler,
-                connection,
-                function="GROUP_CONCAT",
-                **extra_context,
+            extra_context["function"] = "GROUP_CONCAT"
+
+        if (
+            self.distinct
+            and isinstance(self.delimiter.value, Value)
+            and self.delimiter.value.value == ","
+        ):
+            # SQLite does not support DISTINCT with multiple arguments.
+            # Use GROUP_CONCAT without the delimiter when it matches the
+            # default comma.
+            c = self.copy()
+            c.source_expressions = c.source_expressions[:-1]
+            return c.as_sql(
+                compiler, connection, function="GROUP_CONCAT", **extra_context
             )
 
         return self.as_sql(compiler, connection, **extra_context)
